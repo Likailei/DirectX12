@@ -1,3 +1,4 @@
+// version.0.2
 #include "Game.h"
 UINT indexTexture = 0;
 double lastTime = 0.0f;
