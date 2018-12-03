@@ -39,7 +39,7 @@ private:
 	float m_aspectRatio;
 	std::wstring m_title;
 
-	static const UINT FrameCount = 2;
+	static const UINT FrameCount = 3;
 	UINT m_frameCounter = 0;
 	double m_intermediateTime = 0.0f;
 	// Camera.
@@ -89,10 +89,12 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_cbvSrvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_samplerHeap;
 	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
-	ComPtr<ID3D12CommandAllocator> m_commandAllocator;
+	ComPtr<ID3D12CommandAllocator> m_mainCommandAllocator;
 	ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
-	ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
+	ComPtr<ID3D12CommandAllocator> m_frameCommandAllocators[FrameCount];
+	ComPtr<ID3D12CommandAllocator> m_frameBundleAllocators[FrameCount];
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;
+	ComPtr<ID3D12GraphicsCommandList> m_bundles[FrameCount];
 	ComPtr<ID3D12RootSignature> m_rootSignature;
 	ComPtr<ID3D12PipelineState> m_pipelineState;
 
@@ -124,6 +126,7 @@ private:
 	void LoadPipeline();
 	void LoadAssets();
 	void PopulateCommandList();
+	void InitBundles();
 	void WaitForGpu();
 	void MoveToNextFrame();
 	void InitMatrix();

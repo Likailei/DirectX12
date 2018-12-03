@@ -1,4 +1,3 @@
-// version.0.2
 #include "Game.h"
 UINT indexTexture = 0;
 double lastTime = 0.0f;
@@ -144,6 +143,7 @@ void Game::LoadPipeline() {
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
 
+		ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_mainCommandAllocator)));
 		// Create a RTV and a command allocator for each frame.
 		for (UINT n = 0; n < FrameCount; n++)
 		{
@@ -151,7 +151,8 @@ void Game::LoadPipeline() {
 			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
 			rtvHandle.Offset(1, m_rtvDescSize);
 
-			ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[n])));
+			ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_frameCommandAllocators[n])));
+			ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, IID_PPV_ARGS(&m_frameBundleAllocators[n])));
 		}
 	}
 }
@@ -267,8 +268,12 @@ void Game::LoadAssets() {
 	}
 
 	// CommandList.
-	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[m_frameIndex].Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
-
+	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_mainCommandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
+	
+	for (UINT8 i = 0; i < FrameCount; i++) {
+		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, m_frameBundleAllocators[i].Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_bundles[i])));
+	}
+	
 	// Vertex buffer and index buffer.
 	{
 
@@ -544,24 +549,51 @@ void Game::LoadAssets() {
 		WaitForGpu();
 	}
 
+	InitBundles();
 	InitMatrix();
+}
+
+void Game::InitBundles() {
+	// Record bundle.
+	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvHeap.Get() };
+	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), NUM_TEXTURE + m_frameIndex * CUBECOUNT, m_cbuDescSize);
+
+	for (UINT8 i = 0; i < FrameCount; i++) {
+		m_bundles[i]->SetGraphicsRootSignature(m_rootSignature.Get());
+		m_bundles[i]->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+		m_bundles[i]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_bundles[i]->SetGraphicsRootDescriptorTable(0, srvHandle);
+		m_bundles[i]->SetGraphicsRootDescriptorTable(1, cbvHandle);
+		m_bundles[i]->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+		m_bundles[i]->IASetIndexBuffer(&m_indexBufferView);
+
+		for (UINT n = 0; n < cubes.size(); n++) {
+			m_bundles[i]->SetGraphicsRootDescriptorTable(1, cbvHandle);
+			m_bundles[i]->SetGraphicsRoot32BitConstants(2, 6, cubes[n].faceIndex, 0);
+			m_bundles[i]->DrawIndexedInstanced(36, 1, 0, 0, 0);
+
+			cbvHandle.Offset(1, m_cbuDescSize);
+		}
+		ThrowIfFailed(m_bundles[i]->Close());
+	}
 }
 
 void Game::PopulateCommandList()
 {
-	ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
-	ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), m_pipelineState.Get()));
+	ThrowIfFailed(m_frameCommandAllocators[m_frameIndex]->Reset());
+	ThrowIfFailed(m_commandList->Reset(m_frameCommandAllocators[m_frameIndex].Get(), m_pipelineState.Get()));
 
 	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvHeap.Get() };
-	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_commandList->RSSetViewports(1, &m_viewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
-
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+	
+	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	m_commandList->RSSetViewports(1, &m_viewport);
+	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 	const float clearColor[] = { 0.776f, 0.886f, 1.0f, 0.5f };
@@ -570,29 +602,7 @@ void Game::PopulateCommandList()
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), NUM_TEXTURE + m_frameIndex * CUBECOUNT, m_cbuDescSize);
-
-	m_commandList->SetGraphicsRootDescriptorTable(0, srvHandle);
-	m_commandList->SetGraphicsRootDescriptorTable(1, cbvHandle);
-
-	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->IASetIndexBuffer(&m_indexBufferView);
-
-	UINT a[] = { 221,  221,  221, 221, 237, 103 };
-	//m_commandList->SetGraphicsRoot32BitConstants(2, 6, a, 0);
-	//m_commandList->SetGraphicsRoot32BitConstant(2, 3, 0);
-	//m_commandList->DrawIndexedInstanced(36, 1, 0, 0, 0);
-
-	for (UINT i = 0; i < cubes.size(); i++) {
-		m_commandList->SetGraphicsRootDescriptorTable(1, cbvHandle);
-		m_commandList->SetGraphicsRoot32BitConstants(2, 6, cubes[i].faceIndex, 0);
-		m_commandList->DrawIndexedInstanced(36, 1, 0, 0, 0);
-
-		cbvHandle.Offset(1, m_cbuDescSize);
-	}
+	m_commandList->ExecuteBundle(m_bundles[m_frameIndex].Get());
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
