@@ -32,6 +32,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	
 	MyGame.OnInit();
 
+	//AllocConsole();
+
 	ShowWindow(MyGame.m_hwnd, nShowCmd);
 
 	MSG msg = {};
@@ -61,7 +63,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	}
 	return 0;
 
-	case WM_KEYDOWN:
+	/*case WM_KEYDOWN:
 		if (pGame)
 		{
 			pGame->OnKeyDown(static_cast<UINT8>(wParam));
@@ -73,7 +75,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		{
 			pGame->OnKeyUp(static_cast<UINT8>(wParam));
 		}
-		return 0;
+		return 0;*/
 
 	case WM_PAINT:
 		if (pGame)
