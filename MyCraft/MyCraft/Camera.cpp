@@ -1,161 +1,251 @@
+﻿//***************************************************************************************
+// Camera.h by Frank Luna (C) 2011 All Rights Reserved.
+//***************************************************************************************
+
 #include "Camera.h"
 
-Camera::Camera(HWND h, float aspectRatio, XMVECTOR cPos) :
-	mEye(cPos),
-	mSpeed(0.001f),
-	mAt(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)),
-	mUp(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)),
-	mRotXYZ(XMFLOAT3(0.000f, 0.000f, 0.000f))
+using namespace DirectX;
+
+Camera::Camera(HWND h, float aspectRatio)
 {
 	mHwnd = h;
-	XMStoreFloat4x4(&mProjMat, XMMatrixPerspectiveFovLH(45.0f*(3.14f / 180.0f), aspectRatio, 0.1f, 1000.0f));
+	XMStoreFloat4x4(&mView, XMMatrixIdentity());
+	XMStoreFloat4x4(&mProj, XMMatrixIdentity());
 
-	XMStoreFloat4x4(&mRotMat, XMMatrixIdentity());
+	SetLens(0.25f*3.1415926f, aspectRatio, 1.0f, 1000.0f);
 }
 
 Camera::~Camera()
 {
-	mHwnd = nullptr;
 }
 
-void Camera::GetViewMat()
+XMVECTOR Camera::GetPosition()const
 {
-	if (mKeyPressed.w) {
-		
-		mEye.m128_f32[2] += mSpeed;
-		mAt.m128_f32[2] += mSpeed;
-	}
-	if (mKeyPressed.a) {
-		mEye.m128_f32[0] -= mSpeed;
-		mAt.m128_f32[0] -= mSpeed;
-	}
-	if (mKeyPressed.s) {
-		mEye.m128_f32[2] -= mSpeed;
-		mAt.m128_f32[2] -= mSpeed;
-	}
-	if (mKeyPressed.d) {
-		mEye.m128_f32[0] += mSpeed;
-		mAt.m128_f32[0] += mSpeed;
-	}
-
-	float x = mRadius * sinf(mPhi)*cosf(mTheta);
-	float z = mRadius * sinf(mPhi)*sinf(mTheta);
-	float y = mRadius * cosf(mPhi);
-
-	//mEye = XMVectorSet(0.0f, 1.0f, -2.0f, 1.0f);
-	//mAt = XMVectorZero();
-	//mAt = XMVectorSet(mTheta, mPhi, z, 1.0f);
-	mUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	XMStoreFloat4x4(&mViewMat, XMMatrixLookAtLH(mEye, mAt, mUp));
+	return XMLoadFloat3(&mPosition);
 }
 
-void Camera::GetWorldMat(XMVECTOR objPos)
+XMFLOAT3 Camera::GetPosition3f()const
 {
-	XMStoreFloat4x4(&mWorldMat, XMLoadFloat4x4(&mRotMat) * XMMatrixTranslationFromVector(objPos));
+	return mPosition;
 }
 
-void Camera::GetRotMat(XMFLOAT3 xyz)
+void Camera::SetPosition(float x, float y, float z)
 {
-	XMMATRIX rotXMat = XMMatrixRotationX(xyz.x);
-	XMMATRIX rotYMat = XMMatrixRotationY(xyz.y);
-	XMMATRIX rotZMat = XMMatrixRotationZ(xyz.z);
-
-	XMStoreFloat4x4(&mRotMat, XMLoadFloat4x4(&mRotMat) * rotXMat * rotYMat * rotZMat);
+	mPosition = XMFLOAT3(x, y, z);
+	mViewDirty = true;
 }
 
-XMMATRIX Camera::GetObjTransWVPMat(XMVECTOR objPos)
+void Camera::SetPosition(const XMFLOAT3& v)
 {
-	GetViewMat();
-	GetRotMat(mRotXYZ);
-	GetWorldMat(objPos);
-	
-	XMMATRIX tempWVPMat = XMLoadFloat4x4(&mWorldMat) *  XMLoadFloat4x4(&mViewMat) *  XMLoadFloat4x4(&mProjMat);
-	return XMMatrixTranspose(tempWVPMat);
+	mPosition = v;
+	mViewDirty = true;
 }
 
-void Camera::Reset()
+XMVECTOR Camera::GetRight()const
 {
-	mEye = XMVectorSet(0.0f, 1.0f, -10.0f, 0.0f);
-	mAt = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	mUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	return XMLoadFloat3(&mRight);
 }
 
-void Camera::OnKeyDown(WPARAM key)
+XMFLOAT3 Camera::GetRight3f()const
 {
-	switch (key)
+	return mRight;
+}
+
+XMVECTOR Camera::GetUp()const
+{
+	return XMLoadFloat3(&mUp);
+}
+
+XMFLOAT3 Camera::GetUp3f()const
+{
+	return mUp;
+}
+
+XMVECTOR Camera::GetLook()const
+{
+	return XMLoadFloat3(&mLook);
+}
+
+XMFLOAT3 Camera::GetLook3f()const
+{
+	return mLook;
+}
+
+void Camera::SetLens(float fovY, float aspect, float zn, float zf)
+{
+	XMMATRIX P = XMMatrixPerspectiveFovLH(fovY, aspect, zn,zf);
+	XMStoreFloat4x4(&mProj, P);
+}
+
+void Camera::LookAt(FXMVECTOR pos, FXMVECTOR target, FXMVECTOR worldUp)
+{
+	XMVECTOR L = XMVector3Normalize(XMVectorSubtract(target, pos));
+	XMVECTOR R = XMVector3Normalize(XMVector3Cross(worldUp, L));
+	XMVECTOR U = XMVector3Cross(L, R);
+
+	XMStoreFloat3(&mPosition, pos);
+	XMStoreFloat3(&mLook, L);
+	XMStoreFloat3(&mRight, R);
+	XMStoreFloat3(&mUp, U);
+
+	mViewDirty = true;
+}
+
+void Camera::LookAt(const XMFLOAT3& pos, const XMFLOAT3& target, const XMFLOAT3& up)
+{
+	XMVECTOR P = XMLoadFloat3(&pos);
+	XMVECTOR T = XMLoadFloat3(&target);
+	XMVECTOR U = XMLoadFloat3(&up);
+
+	LookAt(P, T, U);
+
+	mViewDirty = true;
+}
+
+XMMATRIX Camera::GetView()const
+{
+	assert(!mViewDirty);
+	return XMLoadFloat4x4(&mView);
+}
+
+XMMATRIX Camera::GetProj()const
+{
+	return XMLoadFloat4x4(&mProj);
+}
+
+XMFLOAT4X4 Camera::GetView4x4f()const
+{
+	assert(!mViewDirty);
+	return mView;
+}
+
+XMFLOAT4X4 Camera::GetProj4x4f()const
+{
+	return mProj;
+}
+
+void Camera::Strafe(float d)
+{
+	//mPosition += d * mRight
+	//mPosition.x += d * mRight.x;
+	//mPosition.y += d * mRight.y;
+	//mPosition.z += d * mRight.z;
+
+	XMVECTOR s = XMVectorReplicate(d);
+	XMVECTOR r = XMLoadFloat3(&mRight);
+	XMVECTOR p = XMLoadFloat3(&mPosition);
+	XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, r, p));
+
+	mViewDirty = true;
+}
+
+void Camera::Walk(float d)
+{
+	// mPosition += d*mLook
+	XMVECTOR s = XMVectorReplicate(d);
+	XMVECTOR l = XMLoadFloat3(&mLook);
+	XMVECTOR p = XMLoadFloat3(&mPosition);
+
+	float tempY = mPosition.y;
+
+	XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
+	mPosition.y = tempY;
+
+	mViewDirty = true;
+}
+
+void Camera::Pitch(float angle)
+{
+	// Rotate up and look vector about the right vector.
+
+	XMMATRIX R = XMMatrixRotationAxis(XMLoadFloat3(&mRight), angle);
+
+	XMStoreFloat3(&mUp, XMVector3TransformNormal(XMLoadFloat3(&mUp), R));
+	XMStoreFloat3(&mLook, XMVector3TransformNormal(XMLoadFloat3(&mLook), R));
+
+	mViewDirty = true;
+}
+
+void Camera::RotateY(float angle)
+{
+	// Rotate the basis vectors about the world y-axis.
+
+	XMMATRIX R = XMMatrixRotationY(angle);
+
+	XMStoreFloat3(&mRight, XMVector3TransformNormal(XMLoadFloat3(&mRight), R));
+	XMStoreFloat3(&mUp, XMVector3TransformNormal(XMLoadFloat3(&mUp), R));
+	XMStoreFloat3(&mLook, XMVector3TransformNormal(XMLoadFloat3(&mLook), R));
+
+	mViewDirty = true;
+}
+
+void Camera::UpdateViewMatrix()
+{
+	if (mViewDirty)
 	{
-	case 'W':
-		mKeyPressed.w = true;
-		break;
-	case 'A':
-		mKeyPressed.a = true;
-		break;
-	case 'S':
-		mKeyPressed.s = true;
-		break;
-	case 'D':
-		mKeyPressed.d = true;
-		break;
+		XMVECTOR R = XMLoadFloat3(&mRight);
+		XMVECTOR U = XMLoadFloat3(&mUp);
+		XMVECTOR L = XMLoadFloat3(&mLook);
+		XMVECTOR P = XMLoadFloat3(&mPosition);
+
+		// Keep camera's axes orthogonal to each other and of unit length.
+		L = XMVector3Normalize(L);
+		U = XMVector3Normalize(XMVector3Cross(L, R));
+
+		// U, L already ortho-normal, so no need to normalize cross product.
+		R = XMVector3Cross(U, L);
+
+		// Fill in the view matrix entries.
+		float x = -XMVectorGetX(XMVector3Dot(P, R));
+		float y = -XMVectorGetX(XMVector3Dot(P, U));
+		float z = -XMVectorGetX(XMVector3Dot(P, L));
+
+		XMStoreFloat3(&mRight, R);
+		XMStoreFloat3(&mUp, U);
+		XMStoreFloat3(&mLook, L);
+
+		mView(0, 0) = mRight.x;
+		mView(1, 0) = mRight.y;
+		mView(2, 0) = mRight.z;
+		mView(3, 0) = x;
+
+		mView(0, 1) = mUp.x;
+		mView(1, 1) = mUp.y;
+		mView(2, 1) = mUp.z;
+		mView(3, 1) = y;
+
+		mView(0, 2) = mLook.x;
+		mView(1, 2) = mLook.y;
+		mView(2, 2) = mLook.z;
+		mView(3, 2) = z;
+
+		mView(0, 3) = 0.0f;
+		mView(1, 3) = 0.0f;
+		mView(2, 3) = 0.0f;
+		mView(3, 3) = 1.0f;
+
+		//mView(0, 0) = mRight.x;
+		//mView(0, 1) = mRight.y;
+		//mView(0, 2) = mRight.z;
+		//mView(0, 3) = x;
+
+		//mView(1, 0) = mUp.x;
+		//mView(1, 1) = mUp.y;
+		//mView(1, 2) = mUp.z;
+		//mView(1, 3) = y;
+
+		//mView(2, 0) = mLook.x;
+		//mView(2, 1) = mLook.y;
+		//mView(2, 2) = mLook.z;
+		//mView(2, 3) = z;
+
+		//mView(3, 0) = 0.0f;
+		//mView(3, 1) = 0.0f;
+		//mView(3, 2) = 0.0f;
+		//mView(3, 3) = 1.0f;
+
+		mViewDirty = false;
 	}
 }
 
-void Camera::OnKeyUp(WPARAM key)
-{
-	switch (key)
-	{
-	case 'W':
-		mKeyPressed.w = false;
-		break;
-	case 'A':
-		mKeyPressed.a = false;
-		break;
-	case 'S':
-		mKeyPressed.s = false;
-		break;
-	case 'D':
-		mKeyPressed.d = false;
-		break;
-	}
-}
 
-void Camera::OnMouseDown(WPARAM btnState, int x, int y)
-{
-	mMousePos.x = x;
-	mMousePos.y = y;
-	SetCapture(mHwnd);
-}
-
-void Camera::OnMouseUp(WPARAM btnState, int x, int y)
-{
-	ReleaseCapture();
-}
-
-void Camera::OnMouseMove(WPARAM btnState, int x, int y)
-{
-	if ((btnState & MK_LBUTTON) != 0)
-	{
-		// Make each pixel correspond to a quarter of a degree.
-		float dx = XMConvertToRadians(0.25f*static_cast<float>(x - mMousePos.x));
-		float dy = XMConvertToRadians(0.25f*static_cast<float>(y - mMousePos.y));
-
-		// Change the lookat's position
-		mAt.m128_f32[0] += dx * 1.2f;
-		mAt.m128_f32[1] -= dy * 3.0f;
-		// Update angles based on input to orbit camera around box.
-		/*mTheta += dx;
-		mPhi += dy;*/
-
-		// Restrict the angle mPhi.
-		//mPhi = Clamp(mPhi, 0.1f, XM_PI - 0.1f);
-	}
-	mMousePos.x = x;
-	mMousePos.y = y;
-}
-
-void Camera::OnMouseWheelRotate(WPARAM btnState)
-{
-	short delta = GET_WHEEL_DELTA_WPARAM(btnState);
-	float r = delta < 0 ? 0.7f : -0.7f;
-	mRadius += r;
-	mRadius = Clamp(mRadius, 3.0f, 15.0f);
-}

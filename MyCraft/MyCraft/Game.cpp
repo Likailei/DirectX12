@@ -1,18 +1,17 @@
 #include "Game.h"
-UINT indexTexture = 0;
-double lastTime = 0.0f;
 
-const UINT8 MAPWIDTH_X = 30;
-const UINT8 MAPWIDTH_Z = 30;
-const UINT8 MAPWIDTH_Y = 2;
+const UINT8 MAPWIDTH_X = 50;
+const UINT8 MAPWIDTH_Z = 50;
+const UINT8 MAPWIDTH_Y = 1;
 const UINT  CUBECOUNT = MAPWIDTH_X * MAPWIDTH_Y * MAPWIDTH_Z;
 
 Game::Game(UINT width, UINT height, std::wstring name) :
 	m_width(width),
 	m_height(height),
 	m_aspectRatio(1.0f),
-	m_camera(Camera(m_hwnd, static_cast<float>(width) / static_cast<float>(height), XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f))),
+	m_camera(Camera(m_hwnd, static_cast<float>(width) / static_cast<float>(height))),
 	m_title(name),
+	m_speed(8.0f, -6.0f, 6.0f),
 	m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
 	m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
 	m_rtvDescSize(0),
@@ -199,9 +198,6 @@ void Game::LoadAssets() {
 		sampler.RegisterSpace = 0;
 		sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-		/*CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-		*/
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
 		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -660,24 +656,58 @@ void Game::InitMatrix()
 	XMStoreFloat4x4(&rotMat, XMMatrixIdentity());*/
 }
 
+void Game::OnKeyboardInput(double& dt) {
+	if (GetAsyncKeyState('W') & 0x8000)
+		m_camera.Walk(m_speed.forward*dt);
+
+	if (GetAsyncKeyState('S') & 0x8000)
+		m_camera.Walk(m_speed.back*dt);
+
+	if (GetAsyncKeyState('A') & 0x8000)
+		m_camera.Strafe(-m_speed.strafe*dt);
+
+	if (GetAsyncKeyState('D') & 0x8000)
+		m_camera.Strafe(m_speed.strafe*dt);
+
+	m_camera.UpdateViewMatrix();
+
+	/*wchar_t debugStr[100];
+	int cnt = swprintf(debugStr, 100, L"%f %f %f\n", m_camera.GetPosition3f().x, m_camera.GetPosition3f().y, m_camera.GetPosition3f().z);
+	WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), debugStr, cnt, NULL, NULL);*/
+}
+
 void Game::OnMouseDown(WPARAM btnState, int x, int y)
 {
-	m_camera.OnMouseDown(btnState, x, y);
+	m_lastMousePosition.x = x;
+	m_lastMousePosition.y = y;
+
+	SetCapture(m_hwnd);
 }
 
 void Game::OnMouseUp(WPARAM btnState, int x, int y)
 {
-	m_camera.OnMouseUp(btnState, x, y);
+	ReleaseCapture();
 }
 
 void Game::OnMouseMove(WPARAM btnState, int x, int y)
 {
-	m_camera.OnMouseMove(btnState, x, y);
+	if ((btnState & MK_LBUTTON) != 0)
+	{
+		// Make each pixel correspond to a quarter of a degree.
+		float dx = XMConvertToRadians(0.25f*static_cast<float>(x - m_lastMousePosition.x));
+		float dy = XMConvertToRadians(0.25f*static_cast<float>(y - m_lastMousePosition.y));
+
+		m_camera.Pitch(dy);
+		m_camera.RotateY(dx);
+	}
+
+	m_lastMousePosition.x = x;
+	m_lastMousePosition.y = y;
 }
 
 void Game::OnMWheelRotate(WPARAM btnState)
 {
-	m_camera.OnMouseWheelRotate(btnState);
+	//m_camera.OnMouseWheelRotate(btnState);
 }
 
 void Game::LoadFiles() {
@@ -707,7 +737,11 @@ void Game::LoadTextures()
 
 void Game::OnUpdate() {
 	m_frameCounter++;
-	m_timer.Tick();
+	double dt = m_timer.Tick();
+
+	OnKeyboardInput(dt);
+	
+	//TODO: 判断移动后脚下方块是否是固体
 
 	if (m_frameCounter == 500) {
 		double t = m_timer.GetElapseTime();
@@ -724,8 +758,16 @@ void Game::OnUpdate() {
 	//XMStoreFloat4(&constantObject.ambientColor, XMVectorSet(0.0f, 1.0f, 1.0f, 1.0f));
 	//constantObject.ambientIntensity = 0.2f;
 
+	XMMATRIX view = m_camera.GetView();
+	XMMATRIX proj = m_camera.GetProj();
+	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+
+	XMMATRIX world;
 	for (UINT n = 0; n < cubes.size(); n++) {
-		XMStoreFloat4x4(&constantObject.wvpMat, m_camera.GetObjTransWVPMat(cubes[n].cubePosition));
+		world = XMMatrixTranslationFromVector(cubes[n].cubePosition);
+		XMMATRIX tempWVPMat = XMMatrixMultiply(world, viewProj);
+		
+		XMStoreFloat4x4(&constantObject.wvpMat, XMMatrixTranspose(tempWVPMat));
 		memcpy(cbvGPUAddress[m_frameIndex] + sizeof(constantObject) * n, &constantObject, sizeof(constantObject));
 	}
 }
@@ -748,20 +790,4 @@ void Game::OnDestroy() {
 	WaitForGpu();
 
 	CloseHandle(m_fenceEvent);
-}
-
-void Game::OnKeyUp(UINT8 key) {
-	m_camera.OnKeyUp(key);
-}
-
-void Game::OnKeyDown(UINT8 key) {
-	m_camera.OnKeyDown(key);
-	switch (key) {
-	case 'N':
-		indexTexture++;
-		break;
-	case 'L':
-		indexTexture--;
-		break;
-	}
 }

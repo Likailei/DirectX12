@@ -17,14 +17,12 @@ public:
 	UINT GetHeight() const { return m_height; }
 	const WCHAR* GetTitle() const { return m_title.c_str(); }
 
-	void OnKeyUp(UINT8 key);
-	void OnKeyDown(UINT8 key);
-
 	void OnInit();
 	void OnUpdate();
 	void OnRender();
 	void OnDestroy();
 
+	void OnKeyboardInput(double& dt);
 	void OnMouseDown(WPARAM btnState, int x, int y);
 	void OnMouseUp(WPARAM btnState, int x, int y);
 	void OnMouseMove(WPARAM btnState, int x, int y);
@@ -34,24 +32,6 @@ public:
 	void LoadTextures();
 
 private:
-	UINT m_width;
-	UINT m_height;
-	float m_aspectRatio;
-	std::wstring m_title;
-
-	static const UINT FrameCount = 3;
-	UINT m_frameCounter = 0;
-	double m_intermediateTime = 0.0f;
-	// Camera.
-	float mTheta = 1.5f*XM_PI;
-	float mPhi = XM_PIDIV4;
-	float mRadius = 5.0f;
-	POINT m_mousePos;
-
-	// Files
-	std::vector<std::string> m_pngFileName;
-	std::vector<Texture> m_textures;
-
 	struct Vertex {
 		Vertex() {}
 		Vertex(float x, float y, float z, float u, float v, float nx, float ny, float nz, UINT fi) :
@@ -75,6 +55,41 @@ private:
 		XMFLOAT3 direction;
 		float padding[40];
 	};
+
+	struct Speed {
+		Speed() {}
+		Speed(float f, float b, float s) : forward(f), back(b), strafe(s) {}
+
+		float forward;
+		float back;
+		float strafe;
+	};
+
+	struct MousePosition {
+		float x;
+		float y;
+	};
+
+	UINT m_width;
+	UINT m_height;
+	float m_aspectRatio;
+	std::wstring m_title;
+
+	Speed m_speed;
+	MousePosition m_lastMousePosition;
+
+	static const UINT FrameCount = 3;
+	UINT m_frameCounter = 0;
+	double m_intermediateTime = 0.0f;
+	// Camera.
+	float mTheta = 1.5f*XM_PI;
+	float mPhi = XM_PIDIV4;
+	float mRadius = 5.0f;
+	POINT m_mousePos;
+
+	// Files
+	std::vector<std::string> m_pngFileName;
+	std::vector<Texture> m_textures;
 
 	std::vector<Cube> cubes;
 	cbObject constantObject;
