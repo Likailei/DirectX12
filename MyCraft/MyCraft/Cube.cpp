@@ -6,3 +6,10 @@ Cube::Cube(UINT id) : ID(id){
 		faceIndex[i] = FACEINDEX[id][i];
 	}
 }
+
+void Cube::SetFaceTexture(UINT fi)
+{
+	for (UINT8 i = 0; i < 6; i++) {
+		faceIndex[i] = FACEINDEX[fi][i];
+	}
+}

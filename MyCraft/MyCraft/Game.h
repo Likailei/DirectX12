@@ -4,6 +4,7 @@
 #include "Cube.h"
 
 const UINT NUM_TEXTURE = 539;
+const float PLAYER_HEIGHT = 1.8f;
 
 class Game
 {
@@ -92,6 +93,9 @@ private:
 	std::vector<Texture> m_textures;
 
 	std::vector<Cube> cubes;
+	std::vector<Vertex> blockVertices;
+	std::vector<UINT> blockIndices;
+	std::vector<XMFLOAT3> blockPositions;
 	cbObject constantObject;
 
 	bool m_useWarpDevice = false;
@@ -145,4 +149,6 @@ private:
 	void WaitForGpu();
 	void MoveToNextFrame();
 	void InitMatrix();
+
+	void GenerateBlockData();
 };

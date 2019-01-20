@@ -8,7 +8,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
 	WNDCLASSEX windowClass = { 0 };
 	windowClass.cbSize = sizeof(WNDCLASSEX);
-	windowClass.style = CS_GLOBALCLASS;
+	//windowClass.style = CS_GLOBALCLASS;
+	windowClass.style = CS_HREDRAW | CS_VREDRAW;
 	windowClass.lpfnWndProc = WindowProc;
 	windowClass.cbClsExtra = windowClass.cbWndExtra = 0;
 	windowClass.hInstance = hInstance;
@@ -44,6 +45,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		else {
+			MyGame.OnUpdate();
+			MyGame.OnRender();
+		}
 	}
 
 	return static_cast<char>(msg.wParam);
@@ -77,13 +82,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		}
 		return 0;*/
 
-	case WM_PAINT:
+	/*case WM_PAINT:
 		if (pGame)
 		{
 			pGame->OnUpdate();
 			pGame->OnRender();
 		}
-		return 0;
+		return 0;*/
 
 	case WM_RBUTTONDOWN:
 		pGame->OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));

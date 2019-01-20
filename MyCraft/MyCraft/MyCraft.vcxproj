@@ -129,6 +129,7 @@
     <ClInclude Include="FaceIndex.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="lodepng.h" />
+    <ClInclude Include="Map.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Timer.h" />
   </ItemGroup>

@@ -12,6 +12,8 @@ Camera::Camera(HWND h, float aspectRatio)
 	XMStoreFloat4x4(&mView, XMMatrixIdentity());
 	XMStoreFloat4x4(&mProj, XMMatrixIdentity());
 
+	//XMStoreFloat3(&mLook, XMVectorSubtract(XMLoadFloat3(&mFocus), XMLoadFloat3(&mPosition)));
+
 	SetLens(0.25f*3.1415926f, aspectRatio, 1.0f, 1000.0f);
 }
 
@@ -149,7 +151,7 @@ void Camera::Walk(float d)
 	float tempY = mPosition.y;
 
 	XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
-	mPosition.y = tempY;
+	//mPosition.y = tempY;
 
 	mViewDirty = true;
 }

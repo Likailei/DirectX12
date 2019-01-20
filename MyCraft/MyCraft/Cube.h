@@ -9,9 +9,15 @@ enum FaceName { FRONT, RIGHT, LEFT, BACK, TOP, BOTTOM};
 
 class Cube {
 public:
+	Cube() = default;
 	Cube(UINT id);
+	
+	bool isSolid = true;
+
 	UINT faceIndex[6];
-	XMVECTOR cubePosition;
+	XMFLOAT3 cubePosition;
+
+	void SetFaceTexture(UINT fi);
 private:
 	UINT ID;
 	std::string cubeName;

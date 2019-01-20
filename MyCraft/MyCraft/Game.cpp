@@ -1,9 +1,10 @@
 #include "Game.h"
-
-const UINT8 MAPWIDTH_X = 50;
-const UINT8 MAPWIDTH_Z = 50;
-const UINT8 MAPWIDTH_Y = 1;
-const UINT  CUBECOUNT = MAPWIDTH_X * MAPWIDTH_Y * MAPWIDTH_Z;
+							
+const UINT8 BLOCKWIDTH_X = 16;
+const UINT8 BLOCKWIDTH_Z = 16;
+const UINT8 BLOCKWIDTH_Y = 1;
+const UINT8 BLOCKCOUNT = 8;
+const UINT  CUBECOUNT = BLOCKWIDTH_X * BLOCKWIDTH_Y * BLOCKWIDTH_Z;
 
 Game::Game(UINT width, UINT height, std::wstring name) :
 	m_width(width),
@@ -26,19 +27,7 @@ Game::Game(UINT width, UINT height, std::wstring name) :
 
 	LoadFiles();
 	LoadTextures();
-
-	float startX = (MAPWIDTH_X - 1) / 2.0f;
-	float startZ = (MAPWIDTH_Z - 1) / 2.0f;
-	float endY = -static_cast<float>(MAPWIDTH_Y);
-	for (float Y = 0; Y > endY; Y -= 1.0f) {
-		for (float Z = -startZ; Z <= startZ; Z += 1.0f) {
-			for (float X = -startX; X <= startX; X += 1.0f) {
-				Cube c(0);
-				c.cubePosition = XMVectorSet(X, Y, Z, 1.0f);
-				cubes.push_back(c);
-			}
-		}
-	}
+	GenerateBlockData();
 }
 
 void Game::OnInit() {
@@ -116,7 +105,7 @@ void Game::LoadPipeline() {
 
 		// SRV CBV heaps.
 		D3D12_DESCRIPTOR_HEAP_DESC cbvSrvHeapDesc = {};
-		cbvSrvHeapDesc.NumDescriptors = NUM_TEXTURE + FrameCount * CUBECOUNT;
+		cbvSrvHeapDesc.NumDescriptors = NUM_TEXTURE + FrameCount * blockPositions.size();
 		cbvSrvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvSrvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvSrvHeapDesc, IID_PPV_ARGS(&m_cbvSrvHeap)));
@@ -273,73 +262,75 @@ void Game::LoadAssets() {
 	// Vertex buffer and index buffer.
 	{
 
-		Vertex vList[] =
-		{
-			//front face
-			{ -0.5f,  0.5f, -0.5f, 0.0f, 0.0f,  0.0f,  0.0f, -1.0f, 0 },
-			{  0.5f, -0.5f, -0.5f, 1.0f, 1.0f,  0.0f,  0.0f, -1.0f, 0 },
-			{ -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,  0.0f,  0.0f, -1.0f, 0 },
-			{  0.5f,  0.5f, -0.5f, 1.0f, 0.0f,  0.0f,  0.0f, -1.0f, 0 },
+		//Vertex vList[] =
+		//{
+		//	//front face
+		//	{ -0.5f,  0.5f, -0.5f, 0.0f, 0.0f,  0.0f,  0.0f, -1.0f, 0 },
+		//	{  0.5f, -0.5f, -0.5f, 1.0f, 1.0f,  0.0f,  0.0f, -1.0f, 0 },
+		//	{ -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,  0.0f,  0.0f, -1.0f, 0 },
+		//	{  0.5f,  0.5f, -0.5f, 1.0f, 0.0f,  0.0f,  0.0f, -1.0f, 0 },
 
-			//right side face
-			{  0.5f,  0.5f, -0.5f, 0.0f, 0.0f,  1.0f,  0.0f,  0.0f, 1 },
-			{  0.5f, -0.5f,  0.5f, 1.0f, 1.0f,  1.0f,  0.0f,  0.0f, 1 },
-			{  0.5f, -0.5f, -0.5f, 0.0f, 1.0f,  1.0f,  0.0f,  0.0f, 1 },
-			{  0.5f,  0.5f,  0.5f, 1.0f, 0.0f,  1.0f,  0.0f,  0.0f, 1 },
+		//	//right side face
+		//	{  0.5f,  0.5f, -0.5f, 0.0f, 0.0f,  1.0f,  0.0f,  0.0f, 1 },
+		//	{  0.5f, -0.5f,  0.5f, 1.0f, 1.0f,  1.0f,  0.0f,  0.0f, 1 },
+		//	{  0.5f, -0.5f, -0.5f, 0.0f, 1.0f,  1.0f,  0.0f,  0.0f, 1 },
+		//	{  0.5f,  0.5f,  0.5f, 1.0f, 0.0f,  1.0f,  0.0f,  0.0f, 1 },
 
-			//left side face
-			{ -0.5f,  0.5f,  0.5f, 0.0f, 0.0f, -1.0f,  0.0f,  0.0f, 2 },
-			{ -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, -1.0f,  0.0f,  0.0f, 2 },
-			{ -0.5f, -0.5f,  0.5f, 0.0f, 1.0f, -1.0f,  0.0f,  0.0f, 2 },
-			{ -0.5f,  0.5f, -0.5f, 1.0f, 0.0f, -1.0f,  0.0f,  0.0f, 2 },
+		//	//left side face
+		//	{ -0.5f,  0.5f,  0.5f, 0.0f, 0.0f, -1.0f,  0.0f,  0.0f, 2 },
+		//	{ -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, -1.0f,  0.0f,  0.0f, 2 },
+		//	{ -0.5f, -0.5f,  0.5f, 0.0f, 1.0f, -1.0f,  0.0f,  0.0f, 2 },
+		//	{ -0.5f,  0.5f, -0.5f, 1.0f, 0.0f, -1.0f,  0.0f,  0.0f, 2 },
 
-			//back face
-			{  0.5f,  0.5f,  0.5f, 0.0f, 0.0f,  0.0f,  0.0f,  1.0f, 3 },
-			{ -0.5f, -0.5f,  0.5f, 1.0f, 1.0f,  0.0f,  0.0f,  1.0f, 3 },
-			{  0.5f, -0.5f,  0.5f, 0.0f, 1.0f,  0.0f,  0.0f,  1.0f, 3 },
-			{ -0.5f,  0.5f,  0.5f, 1.0f, 0.0f,  0.0f,  0.0f,  1.0f, 3 },
-			//top face
-			{ -0.5f,  0.5f,  0.5f, 0.0f, 0.0f,  0.0f,  1.0f,  0.0f, 4 },
-			{  0.5f,  0.5f, -0.5f, 1.0f, 1.0f,  0.0f,  1.0f,  0.0f, 4 },
-			{ -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,  0.0f,  1.0f,  0.0f, 4 },
-			{  0.5f,  0.5f,  0.5f, 1.0f, 0.0f,  0.0f,  1.0f,  0.0f, 4 },
+		//	//back face
+		//	{  0.5f,  0.5f,  0.5f, 0.0f, 0.0f,  0.0f,  0.0f,  1.0f, 3 },
+		//	{ -0.5f, -0.5f,  0.5f, 1.0f, 1.0f,  0.0f,  0.0f,  1.0f, 3 },
+		//	{  0.5f, -0.5f,  0.5f, 0.0f, 1.0f,  0.0f,  0.0f,  1.0f, 3 },
+		//	{ -0.5f,  0.5f,  0.5f, 1.0f, 0.0f,  0.0f,  0.0f,  1.0f, 3 },
+		//	//top face
+		//	{ -0.5f,  0.5f,  0.5f, 0.0f, 0.0f,  0.0f,  1.0f,  0.0f, 4 },
+		//	{  0.5f,  0.5f, -0.5f, 1.0f, 1.0f,  0.0f,  1.0f,  0.0f, 4 },
+		//	{ -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,  0.0f,  1.0f,  0.0f, 4 },
+		//	{  0.5f,  0.5f,  0.5f, 1.0f, 0.0f,  0.0f,  1.0f,  0.0f, 4 },
 
-			//bottom face
-			{ -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,  0.0f, -1.0f,  0.0f, 5 },
-			{  0.5f, -0.5f,  0.5f, 1.0f, 1.0f,  0.0f, -1.0f,  0.0f, 5 },
-			{ -0.5f, -0.5f,  0.5f, 0.0f, 1.0f,  0.0f, -1.0f,  0.0f, 5 },
-			{  0.5f, -0.5f, -0.5f, 1.0f, 0.0f,  0.0f, -1.0f,  0.0f, 5 },
+		//	//bottom face
+		//	{ -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,  0.0f, -1.0f,  0.0f, 5 },
+		//	{  0.5f, -0.5f,  0.5f, 1.0f, 1.0f,  0.0f, -1.0f,  0.0f, 5 },
+		//	{ -0.5f, -0.5f,  0.5f, 0.0f, 1.0f,  0.0f, -1.0f,  0.0f, 5 },
+		//	{  0.5f, -0.5f, -0.5f, 1.0f, 0.0f,  0.0f, -1.0f,  0.0f, 5 },
+		//};
 
-		};
+		//DWORD iList[] = {
+		//	//front face
+		//	0, 1, 2, // first triangle
+		//	0, 3, 1, // second triangle
 
-		DWORD iList[] = {
-			//front face
-			0, 1, 2, // first triangle
-			0, 3, 1, // second triangle
+		//	//left face
+		//	4, 5, 6, // first triangle
+		//	4, 7, 5, // second triangle
 
-			//left face
-			4, 5, 6, // first triangle
-			4, 7, 5, // second triangle
+		//	//right face
+		//	8, 9, 10, // first triangle
+		//	8, 11, 9, // second triangle
 
-			//right face
-			8, 9, 10, // first triangle
-			8, 11, 9, // second triangle
+		//	//back face
+		//	12, 13, 14, // first triangle
+		//	12, 15, 13, // second triangle
 
-			//back face
-			12, 13, 14, // first triangle
-			12, 15, 13, // second triangle
+		//	//top face
+		//	16, 17, 18, // first triangle
+		//	16, 19, 17, // second triangle
 
-			//top face
-			16, 17, 18, // first triangle
-			16, 19, 17, // second triangle
+		//	//bottom face
+		//	20, 21, 22, // first triangle
+		//	20, 23, 21, // second triangle
+		//};
 
-			//bottom face
-			20, 21, 22, // first triangle
-			20, 23, 21, // second triangle
-		};
+		//UINT vSize = sizeof(vList);
+		//UINT iSize = sizeof(iList);
 
-		UINT vSize = sizeof(vList);
-		UINT iSize = sizeof(iList);
+		UINT vSize = blockVertices.size() * sizeof(Vertex);
+		UINT iSize = blockIndices.size() * sizeof(UINT);
 
 		ThrowIfFailed(m_device->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -358,7 +349,7 @@ void Game::LoadAssets() {
 			IID_PPV_ARGS(&vertexBufferUploadHeap)));
 
 		D3D12_SUBRESOURCE_DATA vertexData = {};
-		vertexData.pData = reinterpret_cast<UINT8*>(vList);
+		vertexData.pData = reinterpret_cast<UINT8*>(blockVertices.data());
 		vertexData.RowPitch = vSize;
 		vertexData.SlicePitch = vertexData.RowPitch;
 
@@ -388,7 +379,7 @@ void Game::LoadAssets() {
 			IID_PPV_ARGS(&indexBufferUploadHeap)));
 
 		D3D12_SUBRESOURCE_DATA indexData = {};
-		indexData.pData = reinterpret_cast<UINT8*>(iList);
+		indexData.pData = reinterpret_cast<UINT8*>(blockIndices.data());
 		indexData.RowPitch = iSize;
 		indexData.SlicePitch = indexData.RowPitch;
 
@@ -475,7 +466,7 @@ void Game::LoadAssets() {
 		CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetCPUDescriptorHandleForHeapStart(), NUM_TEXTURE, m_cbuDescSize);	// Move past the SRVs.
 
 		UINT cbCountInBufferStep = 1024 * 64 / sizeof(cbObject);
-		UINT bufferCount = (CUBECOUNT + cbCountInBufferStep - 1) / cbCountInBufferStep;
+		UINT bufferCount = (blockPositions.size() + cbCountInBufferStep - 1) / cbCountInBufferStep;
 		UINT64 bufferSize = 1024 * 64 * bufferCount;
 
 		for (UINT8 i = 0; i < FrameCount; i++) {
@@ -491,7 +482,7 @@ void Game::LoadAssets() {
 			ThrowIfFailed(m_cbvBuffers[i]->Map(0, &readRange, reinterpret_cast<void**>(&cbvGPUAddress[i])));
 
 			UINT64 offset = 0;
-			for (UINT n = 0; n < CUBECOUNT; n++) {
+			for (UINT n = 0; n < blockPositions.size(); n++) {
 				D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 				cbvDesc.BufferLocation = m_cbvBuffers[i]->GetGPUVirtualAddress() + offset;
 				cbvDesc.SizeInBytes = sizeof(cbObject);
@@ -553,21 +544,21 @@ void Game::InitBundles() {
 	// Record bundle.
 	ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvHeap.Get() };
 	CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), NUM_TEXTURE + m_frameIndex * CUBECOUNT, m_cbuDescSize);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), NUM_TEXTURE + m_frameIndex * blockPositions.size(), m_cbuDescSize);
 
 	for (UINT8 i = 0; i < FrameCount; i++) {
 		m_bundles[i]->SetGraphicsRootSignature(m_rootSignature.Get());
 		m_bundles[i]->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 		m_bundles[i]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_bundles[i]->SetGraphicsRootDescriptorTable(0, srvHandle);
-		m_bundles[i]->SetGraphicsRootDescriptorTable(1, cbvHandle);
+		//m_bundles[i]->SetGraphicsRootDescriptorTable(1, cbvHandle);
 		m_bundles[i]->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 		m_bundles[i]->IASetIndexBuffer(&m_indexBufferView);
 
-		for (UINT n = 0; n < cubes.size(); n++) {
+		m_bundles[i]->SetGraphicsRoot32BitConstants(2, 6, cubes[0].faceIndex, 0);
+		for (UINT n = 0; n < blockPositions.size(); n++) {
 			m_bundles[i]->SetGraphicsRootDescriptorTable(1, cbvHandle);
-			m_bundles[i]->SetGraphicsRoot32BitConstants(2, 6, cubes[n].faceIndex, 0);
-			m_bundles[i]->DrawIndexedInstanced(36, 1, 0, 0, 0);
+			m_bundles[i]->DrawIndexedInstanced(blockIndices.size(), 1, 0, 0, 0);
 
 			cbvHandle.Offset(1, m_cbuDescSize);
 		}
@@ -735,6 +726,134 @@ void Game::LoadTextures()
 	}
 }
 
+void Game::GenerateBlockData()
+{
+	//由下到上(Y- -> Y+)、由左到右(X- -> X+)、由前往后(Z- -> Z+)
+	float startX = -static_cast<float>(BLOCKWIDTH_X) / 2.0f + 0.5f; //-1.5
+	float startY = -static_cast<float>(BLOCKWIDTH_Y) + 0.5f;		//-1.5
+	float startZ = -static_cast<float>(BLOCKWIDTH_Z) / 2.0f + 0.5f; //-1.5
+	float endY = -0.5f;
+	
+	UINT cubeCnt = 0;
+	for (float Y = startY; Y <= endY; Y += 1.0f) {
+		for (float Z = startZ; Z <= -startZ; Z += 1.0f) {
+			for (float X = startX; X <= -startX; X += 1.0f) {
+				Cube c;
+				if (Y == endY) {
+					c.SetFaceTexture(0);	// Grass.
+				}
+				else {
+					c.SetFaceTexture(3);	// Dirt.
+				}
+				
+				c.cubePosition = XMFLOAT3(X, Y, Z);
+				cubes.push_back(c);
+
+				// Add vertex.
+				//front face
+				blockVertices.push_back({ X - 0.5f, Y + 0.5f, Z - 0.5f, 0.0f, 0.0f,  0.0f,  0.0f, -1.0f, 0 });
+				blockVertices.push_back({ X + 0.5f, Y - 0.5f, Z - 0.5f, 1.0f, 1.0f,  0.0f,  0.0f, -1.0f, 0 });
+				blockVertices.push_back({ X - 0.5f, Y - 0.5f, Z - 0.5f, 0.0f, 1.0f,  0.0f,  0.0f, -1.0f, 0 });
+				blockVertices.push_back({ X + 0.5f, Y + 0.5f, Z - 0.5f, 1.0f, 0.0f,  0.0f,  0.0f, -1.0f, 0 });
+
+				//right side face
+				blockVertices.push_back({ X + 0.5f, Y + 0.5f, Z - 0.5f, 0.0f, 0.0f,  1.0f,  0.0f,  0.0f, 1 });
+				blockVertices.push_back({ X + 0.5f, Y - 0.5f, Z + 0.5f, 1.0f, 1.0f,  1.0f,  0.0f,  0.0f, 1 });
+				blockVertices.push_back({ X + 0.5f, Y - 0.5f, Z - 0.5f, 0.0f, 1.0f,  1.0f,  0.0f,  0.0f, 1 });
+				blockVertices.push_back({ X + 0.5f, Y + 0.5f, Z + 0.5f, 1.0f, 0.0f,  1.0f,  0.0f,  0.0f, 1 });
+
+				//left side face
+				blockVertices.push_back({ X - 0.5f, Y + 0.5f, Z + 0.5f, 0.0f, 0.0f, -1.0f,  0.0f,  0.0f, 2 });
+				blockVertices.push_back({ X - 0.5f, Y - 0.5f, Z - 0.5f, 1.0f, 1.0f, -1.0f,  0.0f,  0.0f, 2 });
+				blockVertices.push_back({ X - 0.5f, Y - 0.5f, Z + 0.5f, 0.0f, 1.0f, -1.0f,  0.0f,  0.0f, 2 });
+				blockVertices.push_back({ X - 0.5f, Y + 0.5f, Z - 0.5f, 1.0f, 0.0f, -1.0f,  0.0f,  0.0f, 2 });
+
+				//back face
+				blockVertices.push_back({ X + 0.5f, Y + 0.5f,  Z + 0.5f, 0.0f, 0.0f,  0.0f,  0.0f,  1.0f, 3 });
+				blockVertices.push_back({ X - 0.5f, Y - 0.5f,  Z + 0.5f, 1.0f, 1.0f,  0.0f,  0.0f,  1.0f, 3 });
+				blockVertices.push_back({ X + 0.5f, Y - 0.5f,  Z + 0.5f, 0.0f, 1.0f,  0.0f,  0.0f,  1.0f, 3 });
+				blockVertices.push_back({ X - 0.5f, Y + 0.5f,  Z + 0.5f, 1.0f, 0.0f,  0.0f,  0.0f,  1.0f, 3 });
+
+				//top face
+				blockVertices.push_back({ X - 0.5f, Y + 0.5f, Z + 0.5f, 0.0f, 0.0f,  0.0f,  1.0f,  0.0f, 4 });
+				blockVertices.push_back({ X + 0.5f, Y + 0.5f, Z - 0.5f, 1.0f, 1.0f,  0.0f,  1.0f,  0.0f, 4 });
+				blockVertices.push_back({ X - 0.5f, Y + 0.5f, Z - 0.5f, 0.0f, 1.0f,  0.0f,  1.0f,  0.0f, 4 });
+				blockVertices.push_back({ X + 0.5f, Y + 0.5f, Z + 0.5f, 1.0f, 0.0f,  0.0f,  1.0f,  0.0f, 4 });
+
+				//bottom face
+				blockVertices.push_back({ X - 0.5f, Y - 0.5f, Z - 0.5f, 0.0f, 0.0f,  0.0f, -1.0f,  0.0f, 5 });
+				blockVertices.push_back({ X + 0.5f, Y - 0.5f, Z + 0.5f, 1.0f, 1.0f,  0.0f, -1.0f,  0.0f, 5 });
+				blockVertices.push_back({ X - 0.5f, Y - 0.5f, Z + 0.5f, 0.0f, 1.0f,  0.0f, -1.0f,  0.0f, 5 });
+				blockVertices.push_back({ X + 0.5f, Y - 0.5f, Z - 0.5f, 1.0f, 0.0f,  0.0f, -1.0f,  0.0f, 5 });
+
+				//// Add index.
+				//front face
+				blockIndices.push_back(0 + 24 * cubeCnt);
+				blockIndices.push_back(1 + 24 * cubeCnt);
+				blockIndices.push_back(2 + 24 * cubeCnt); // first triangle
+				blockIndices.push_back(0 + 24 * cubeCnt);
+				blockIndices.push_back(3 + 24 * cubeCnt);
+				blockIndices.push_back(1 + 24 * cubeCnt); // second triangle
+
+				//left face			    
+				blockIndices.push_back(4 + 24 * cubeCnt);
+				blockIndices.push_back(5 + 24 * cubeCnt);
+				blockIndices.push_back(6 + 24 * cubeCnt); // first triangle
+				blockIndices.push_back(4 + 24 * cubeCnt);
+				blockIndices.push_back(7 + 24 * cubeCnt);
+				blockIndices.push_back(5 + 24 * cubeCnt); // second triangle
+
+				//right face		    
+				blockIndices.push_back(8 + 24 * cubeCnt);
+				blockIndices.push_back(9 + 24 * cubeCnt);
+				blockIndices.push_back(10 + 24 * cubeCnt); // first triangle
+				blockIndices.push_back(8 + 24 * cubeCnt);
+				blockIndices.push_back(11 + 24 * cubeCnt);
+				blockIndices.push_back(9 + 24 * cubeCnt); // second triangle
+
+				//back face
+				blockIndices.push_back(12 + 24 * cubeCnt);
+				blockIndices.push_back(13 + 24 * cubeCnt);
+				blockIndices.push_back(14 + 24 * cubeCnt); // first triangle
+				blockIndices.push_back(12 + 24 * cubeCnt);
+				blockIndices.push_back(15 + 24 * cubeCnt);
+				blockIndices.push_back(13 + 24 * cubeCnt); // second triangle
+
+				//top face
+				blockIndices.push_back(16 + 24 * cubeCnt);
+				blockIndices.push_back(17 + 24 * cubeCnt);
+				blockIndices.push_back(18 + 24 * cubeCnt); // first triangle
+				blockIndices.push_back(16 + 24 * cubeCnt);
+				blockIndices.push_back(19 + 24 * cubeCnt);
+				blockIndices.push_back(17 + 24 * cubeCnt); // second triangle
+
+				//bottom face
+				blockIndices.push_back(20 + 24 * cubeCnt);
+				blockIndices.push_back(21 + 24 * cubeCnt);
+				blockIndices.push_back(22 + 24 * cubeCnt); // first triangle
+				blockIndices.push_back(20 + 24 * cubeCnt);
+				blockIndices.push_back(23 + 24 * cubeCnt);
+				blockIndices.push_back(21 + 24 * cubeCnt); // second triangle
+
+				++cubeCnt;
+			}
+		}
+	}
+
+	// Add blocks' position.
+	float stepX = static_cast<float>(BLOCKWIDTH_X);
+	float stepZ = static_cast<float>(BLOCKWIDTH_Z);
+	for (UINT8 z = 0; z < BLOCKCOUNT / 2; ++z) {
+		for (UINT8 x = 0; x < BLOCKCOUNT / 2; ++x) {
+			blockPositions.push_back(XMFLOAT3(x*stepX, 0.0f, z*stepZ));
+		}
+	}
+
+	// Set camera at center.
+	float yardRadius = BLOCKCOUNT / 4.0f * BLOCKWIDTH_X;
+	m_camera.SetPosition(yardRadius-0.5f, PLAYER_HEIGHT, yardRadius-0.5f);
+}
+
 void Game::OnUpdate() {
 	m_frameCounter++;
 	double dt = m_timer.Tick();
@@ -743,12 +862,12 @@ void Game::OnUpdate() {
 	
 	//TODO: 判断移动后脚下方块是否是固体
 
-	if (m_frameCounter == 500) {
+	if (m_frameCounter == 300) {
 		double t = m_timer.GetElapseTime();
 		double delta = t - m_intermediateTime;
 
 		wchar_t fps[64];
-		swprintf_s(fps, L"%f fps", 500 / delta);
+		swprintf_s(fps, L"%f fps", 300 / delta);
 		std::wstring windowText = m_title + L": " + fps;
 		SetWindowText(m_hwnd, windowText.c_str());
 
@@ -763,8 +882,8 @@ void Game::OnUpdate() {
 	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
 
 	XMMATRIX world;
-	for (UINT n = 0; n < cubes.size(); n++) {
-		world = XMMatrixTranslationFromVector(cubes[n].cubePosition);
+	for (UINT n = 0; n < blockPositions.size(); n++) {
+		world = XMMatrixTranslationFromVector(XMLoadFloat3(&blockPositions[n]));
 		XMMATRIX tempWVPMat = XMMatrixMultiply(world, viewProj);
 		
 		XMStoreFloat4x4(&constantObject.wvpMat, XMMatrixTranspose(tempWVPMat));
@@ -781,7 +900,7 @@ void Game::OnRender() {
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Present the frame.
-	ThrowIfFailed(m_swapChain->Present(1, 0));
+	ThrowIfFailed(m_swapChain->Present(0, 0));
 
 	MoveToNextFrame();
 }
