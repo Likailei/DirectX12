@@ -7,14 +7,14 @@
 
 class Timer {
 public:
-	Timer();
+    Timer();
 
-	double Tick();
-	double GetElapseTime() { return m_elapseTime; }
+    double Tick();
+    double GetElapseTime() { return m_elapseTime; }
 private:
-	LARGE_INTEGER m_counterFreq;
-	LARGE_INTEGER m_startTime;
-	double m_elapseTime;
-	LARGE_INTEGER m_lastTime;
+    LARGE_INTEGER m_counterFreq;
+    LARGE_INTEGER m_startTime;
+    double m_elapseTime;
+    LARGE_INTEGER m_lastTime;
 };
 #endif // !__TIMER_H__

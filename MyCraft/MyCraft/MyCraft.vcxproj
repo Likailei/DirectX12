@@ -88,6 +88,10 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>
+      </StackReserveSize>
+      <StackCommitSize>
+      </StackCommitSize>
     </Link>
     <FxCompile>
       <ShaderModel>5.1</ShaderModel>
@@ -123,22 +127,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Block.h" />
+    <ClInclude Include="BlockID.h" />
+    <ClInclude Include="BlockName" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="Cube.h" />
+    <ClInclude Include="Chunk.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="FaceIndex.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="lodepng.h" />
-    <ClInclude Include="Map.h" />
+    <ClInclude Include="Region.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Timer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Block.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="Cube.cpp" />
+    <ClCompile Include="Chunk.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Region.cpp" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>

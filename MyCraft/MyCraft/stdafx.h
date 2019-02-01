@@ -28,39 +28,58 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
+enum Face { FRONT, RIGHT, LEFT, BACK, TOP, BOTTOM };
+enum BlockType { NONE, SOLID};
+
+struct Vertex {
+    Vertex() {}
+    Vertex(float x, float y, float z, float u, float v, float nx, float ny, float nz, UINT fi) :
+        position(x, y, z), uv(u, v), normal(nx, ny, nz), faceIndex(fi) {}
+
+    XMFLOAT3 position;
+    XMFLOAT2 uv;
+    XMFLOAT3 normal;
+    UINT faceIndex;
+};
+
+struct Mesh {
+    std::vector<Vertex> v;
+    std::vector<UINT> i;
+};
+
 struct Texture
 {
-	std::vector<UINT8> data;
-	std::string name;
-	UINT16 ID;
-	UINT width;
-	UINT height;
+    std::vector<UINT8> data;
+    std::string name;
+    UINT16 ID;
+    UINT width;
+    UINT height;
 };
 
 inline std::string HrToString(HRESULT hr)
 {
-	char s_str[64] = {};
-	sprintf_s(s_str, "HRESULT of 0x%08X", static_cast<UINT>(hr));
-	return std::string(s_str);
+    char s_str[64] = {};
+    sprintf_s(s_str, "HRESULT of 0x%08X", static_cast<UINT>(hr));
+    return std::string(s_str);
 }
 
 class HrException : public std::runtime_error
 {
 public:
-	HrException(HRESULT hr) : std::runtime_error(HrToString(hr)), m_hr(hr) {}
-	HRESULT Error() const { return m_hr; }
+    HrException(HRESULT hr) : std::runtime_error(HrToString(hr)), m_hr(hr) {}
+    HRESULT Error() const { return m_hr; }
 private:
-	const HRESULT m_hr;
+    const HRESULT m_hr;
 };
 
 inline void ThrowIfFailed(HRESULT hr)
 {
-	if (FAILED(hr))
-	{
-		throw HrException(hr);
-	}
+    if (FAILED(hr))
+    {
+        throw HrException(hr);
+    }
 }
 
 inline float Clamp(float x, float low, float high) {
-	return x < low ? low : (x > high ? high : x);
+    return x < low ? low : (x > high ? high : x);
 }

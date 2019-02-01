@@ -30,16 +30,25 @@
     <ClInclude Include="Timer.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Cube.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="FaceIndex.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Map.h">
+    <ClInclude Include="BlockID.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Block.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Chunk.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="BlockName">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Region.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -56,10 +65,16 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Cube.cpp">
+    <ClCompile Include="Camera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
+    <ClCompile Include="Block.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Chunk.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Region.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
