@@ -78,7 +78,7 @@ private:
 
     std::vector<Block> m_blocks;
     Region m_region;
-    Chunk m_chunk;
+    std::vector<Chunk> m_chunks;
     std::vector<Vertex> blockVertices;
     std::vector<UINT> blockIndices;
     std::vector<XMFLOAT3> blockPositions;
@@ -103,13 +103,18 @@ private:
     ComPtr<ID3D12RootSignature> m_rootSignature;
     ComPtr<ID3D12PipelineState> m_pipelineState;
 
-    ComPtr<ID3D12Resource> m_vertexBuffer;
-    ComPtr<ID3D12Resource> m_indexBuffer;
+    ComPtr<ID3D12Resource> m_vertexBuffers[CHUNKCNT];
+    ComPtr<ID3D12Resource> m_indexBuffers[CHUNKCNT];
     ComPtr<ID3D12Resource> m_textureBuffers[NUM_TEXTURE];
     ComPtr<ID3D12Resource> m_cbvBuffers[FrameCount];
     ComPtr<ID3D12Resource> m_depthStencilBuffer;
-    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferViews[CHUNKCNT];
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferViews[CHUNKCNT];
+
+
+    ComPtr<ID3D12Resource> vertexBufferUploadHeaps[CHUNKCNT];
+    ComPtr<ID3D12Resource> indexBufferUploadHeaps[CHUNKCNT];
+    ComPtr<ID3D12Resource> textureBufferUploadHeap[NUM_TEXTURE];
 
     UINT m_frameIndex;
     UINT m_rtvDescSize;
@@ -136,6 +141,4 @@ private:
     void MoveToNextFrame();
     void InitMatrix();
     void InitRegion();
-
-    void GenerateBlockData();
 };

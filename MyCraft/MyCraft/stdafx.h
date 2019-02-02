@@ -6,6 +6,8 @@
 
 #define SAFE_RELEASE(p) if (p) (p)->Release()
 
+#define CHUNKCNT 1
+
 #include <windows.h>
 #include <windowsx.h>
 
@@ -31,6 +33,13 @@ using Microsoft::WRL::ComPtr;
 enum Face { FRONT, RIGHT, LEFT, BACK, TOP, BOTTOM };
 enum BlockType { NONE, SOLID};
 
+static const int CHUNK_WIDTH = 16;
+static const int CHUNK_HEIGHT = 256;
+static const int REGION_WIDTH = 512;
+static const int REGION_CHUNK_COUNT = 32;
+static const XMINT3 BLOCK_COORD_MAX = XMINT3(CHUNK_WIDTH - 1, CHUNK_HEIGHT - 1, CHUNK_WIDTH - 1);
+static const XMINT3 BLOCK_COORD_MIN = XMINT3(0, 0, 0);
+
 struct Vertex {
     Vertex() {}
     Vertex(float x, float y, float z, float u, float v, float nx, float ny, float nz, UINT fi) :
@@ -55,6 +64,17 @@ struct Texture
     UINT width;
     UINT height;
 };
+
+inline size_t Index(XMINT3 bPosInChunk)
+{
+    return bPosInChunk.z * CHUNK_WIDTH * CHUNK_HEIGHT + bPosInChunk.x * CHUNK_HEIGHT + bPosInChunk.y;
+}
+
+inline size_t Index(int z, int x, int y)
+{
+    return z * CHUNK_WIDTH * CHUNK_HEIGHT + x * CHUNK_HEIGHT + y;
+}
+
 
 inline std::string HrToString(HRESULT hr)
 {

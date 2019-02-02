@@ -42,13 +42,13 @@
     <ClInclude Include="Block.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Chunk.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="BlockName">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Region.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Chunk.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -71,10 +71,10 @@
     <ClCompile Include="Block.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Chunk.cpp">
+    <ClCompile Include="Region.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Region.cpp">
+    <ClCompile Include="Chunk.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -10,11 +10,10 @@ public:
     void InitRegion();
     const std::vector<Chunk>& GetChunks() const { return rChunks; }
 private:
-    static const unsigned rWidth = 512;
-    static const unsigned rChunkCnt = 32;
+
     Texture rHeightMap;
     std::string rHMapName;
-    std::vector<std::vector<UINT8>> chunkHeightData;
+    std::vector<std::vector<UINT8>> rHeightData;
     std::vector<Chunk> rChunks;
 
     void LoadHeightMap();

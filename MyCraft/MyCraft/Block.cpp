@@ -1,10 +1,12 @@
 #include "Block.h"
 #include "FaceIndex.h"
 
-Block::Block(UINT id, float x, float y, float z) :
+Block::Block(UINT id, int x, int y, int z, const XMFLOAT3& cPos) :
     bId(id),
-    bPos(XMFLOAT3(x, y, z))
+    bPosInChunk(XMINT3(x, y, z))
 {
+    bPosInWorld = XMFLOAT3(x + cPos.x, y + cPos.y, z + cPos.z);
+
     if (bId == 0)
         bType = BlockType::NONE;
     else
@@ -22,7 +24,93 @@ void Block::SetFaceTexture(UINT fi)
     }
 }
 
+void Block::CheckSurrounded(Block* chunkBlocks)
+{
+    if (bType != NONE) {
+        for (int i = 0; i < 6; ++i) {
+            Face f = (Face)i;
+            XMINT3 p = bPosInChunk;
 
+            switch (f)
+            {
+            case FRONT:
+                if (p.z == BLOCK_COORD_MIN.z) {
+                    faceVisible[FRONT] = false;
+                    break;
+                }
+                p.z -= 1;
+                if (chunkBlocks[Index(p)].GetType() == NONE) {
+                    faceVisible[FRONT] = true;
+                    break;
+                }
+                break;
+
+            case RIGHT:
+                if (p.x == BLOCK_COORD_MAX.x) {
+                    faceVisible[RIGHT] = false;
+                    break;
+                }
+                p.x += 1;
+                if (chunkBlocks[Index(p)].GetType() == NONE) {
+                    faceVisible[RIGHT] = true;
+                    break;
+                }
+                break;
+
+            case LEFT:
+                if (p.x == BLOCK_COORD_MIN.x) {
+                    faceVisible[LEFT] = false;
+                    break;
+                }
+                p.x -= 1;
+                if (chunkBlocks[Index(p)].GetType() == NONE) {
+                    faceVisible[LEFT] = true;
+                    break;
+                }
+                break;
+
+            case BACK:
+                if (p.z == BLOCK_COORD_MAX.z) {
+                    faceVisible[BACK] = false;
+                    break;
+                }
+                p.z += 1;
+                if (chunkBlocks[Index(p)].GetType() == NONE) {
+                    faceVisible[BACK] = true;
+                    break;
+                }
+                break;
+
+            case TOP:
+                if (p.y == BLOCK_COORD_MAX.y) {
+                    faceVisible[TOP] = false;
+                    break;
+                }
+                p.y += 1;
+                if (chunkBlocks[Index(p)].GetType() == NONE) {
+                    faceVisible[TOP] = true;
+                    break;
+                }
+                break;
+
+            case BOTTOM:
+                if (p.y == BLOCK_COORD_MIN.y) {
+                    faceVisible[BOTTOM] = false;
+                    break;
+                }
+                p.y -= 1;
+                if (chunkBlocks[Index(p)].GetType() == NONE) {
+                    faceVisible[BOTTOM] = true;
+                    break;
+                }
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+}
 
 
 

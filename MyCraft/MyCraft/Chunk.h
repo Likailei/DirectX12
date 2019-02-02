@@ -13,23 +13,17 @@ public:
     Chunk();
     ~Chunk();
 
-    static const unsigned cWidth = 16;
-    static const unsigned cHeight = 256;
-
-    XMFLOAT3 GetChunkPosition() { return cPos; }
-    void SetChunkPosition(XMFLOAT3 p);
+    XMFLOAT3 GetChunkPosition3f() { return cPos; }
     const Mesh& GetChunkMesh() const{ return cMesh; }
 
+    void SetChunkPosition(XMFLOAT3 p);
     void InitChunkMesh(std::vector<UINT8>& hmap);
 private:
-    XMFLOAT3 cPos;
-    Block*** cBlocks;
+    XMFLOAT3 cPos;    // The south-east(bottom-left of the front) corner is the chunk's origin
+    Block* cBlocks;
     Mesh cMesh;
-    XMFLOAT3 cCoordMax;
-    XMFLOAT3 cCoordMin;
 
     void InitBlocks(std::vector<UINT8>& hmap);
-    bool IsFaceExposed(Face f, XMFLOAT3 xyz);
 };
 
 #endif // !__CHUNK_H__
