@@ -35,7 +35,7 @@ void Block::CheckSurrounded(Block* chunkBlocks)
             {
             case FRONT:
                 if (p.z == BLOCK_COORD_MIN.z) {
-                    faceVisible[FRONT] = false;
+                    faceVisible[FRONT] = true;
                     break;
                 }
                 p.z -= 1;
@@ -47,7 +47,7 @@ void Block::CheckSurrounded(Block* chunkBlocks)
 
             case RIGHT:
                 if (p.x == BLOCK_COORD_MAX.x) {
-                    faceVisible[RIGHT] = false;
+                    faceVisible[RIGHT] = true;
                     break;
                 }
                 p.x += 1;
@@ -59,7 +59,7 @@ void Block::CheckSurrounded(Block* chunkBlocks)
 
             case LEFT:
                 if (p.x == BLOCK_COORD_MIN.x) {
-                    faceVisible[LEFT] = false;
+                    faceVisible[LEFT] = true;
                     break;
                 }
                 p.x -= 1;
@@ -71,7 +71,7 @@ void Block::CheckSurrounded(Block* chunkBlocks)
 
             case BACK:
                 if (p.z == BLOCK_COORD_MAX.z) {
-                    faceVisible[BACK] = false;
+                    faceVisible[BACK] = true;
                     break;
                 }
                 p.z += 1;
@@ -83,7 +83,7 @@ void Block::CheckSurrounded(Block* chunkBlocks)
 
             case TOP:
                 if (p.y == BLOCK_COORD_MAX.y) {
-                    faceVisible[TOP] = false;
+                    faceVisible[TOP] = true;
                     break;
                 }
                 p.y += 1;
@@ -95,7 +95,7 @@ void Block::CheckSurrounded(Block* chunkBlocks)
 
             case BOTTOM:
                 if (p.y == BLOCK_COORD_MIN.y) {
-                    faceVisible[BOTTOM] = false;
+                    faceVisible[BOTTOM] = true;
                     break;
                 }
                 p.y -= 1;

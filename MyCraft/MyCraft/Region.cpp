@@ -7,11 +7,11 @@ Region::Region(std::string filename):
     rChunks.resize(CHUNKCNT);
 }
 
-void Region::InitRegion()
+void Region::InitRegion(XMFLOAT3* playerPos)
 {
     LoadHeightMap();
     TranslateAndInitHeightData();
-    GenerateChunksMesh();
+    GenerateChunksMesh(playerPos);
 }
 
 void Region::LoadHeightMap()
@@ -42,14 +42,32 @@ void Region::TranslateAndInitHeightData()
     }
 }
 
-void Region::GenerateChunksMesh()
+void Region::GenerateChunksMesh(XMFLOAT3* playerPos)
 {
+    XMINT3 playerPosInt;
+    playerPosInt.x = (int)playerPos->x;
+    playerPosInt.y = (int)playerPos->y;
+    playerPosInt.z = (int)playerPos->z;
+
+    int indexPlayerChunk = (playerPosInt.z / CHUNK_WIDTH) * REGION_CHUNK_COUNT + playerPosInt.x / CHUNK_WIDTH;
+    int surroundedChunks[CHUNKCNT] = {
+        indexPlayerChunk - 64 - 2, indexPlayerChunk - 64 - 1, indexPlayerChunk - 64, indexPlayerChunk - 64 + 1, indexPlayerChunk - 64 + 2,
+        indexPlayerChunk - 32 - 2, indexPlayerChunk - 32 - 1, indexPlayerChunk - 32, indexPlayerChunk - 32 + 1, indexPlayerChunk - 32 + 2,
+        indexPlayerChunk -  0 - 2, indexPlayerChunk -  0 - 1, indexPlayerChunk -  0, indexPlayerChunk -  0 + 1, indexPlayerChunk -  0 + 2,
+        indexPlayerChunk + 32 - 2, indexPlayerChunk + 32 - 1, indexPlayerChunk + 32, indexPlayerChunk + 32 + 1, indexPlayerChunk + 32 + 2,
+        indexPlayerChunk + 64 - 2, indexPlayerChunk + 64 - 1, indexPlayerChunk + 64, indexPlayerChunk + 64 + 1, indexPlayerChunk + 64 + 2
+    };
+
+
+    // Set player's y coordinate.
+    playerPos->y = (float)rHeightData[indexPlayerChunk][playerPosInt.z % 16 * 16 + playerPosInt.x % 16];
+
     // The south-east(bottom-left of the front) corner is the chunk's origin
-    for (int i = 0; i < CHUNKCNT;++i) {
-        int x = i % REGION_CHUNK_COUNT;
-        int z = i / REGION_CHUNK_COUNT;
+    for (int i = 0; i < CHUNKCNT; ++i) {
+        int x = surroundedChunks[i] % REGION_CHUNK_COUNT;
+        int z = surroundedChunks[i] / REGION_CHUNK_COUNT;
         rChunks[i].SetChunkPosition(XMFLOAT3((float)(x * CHUNK_WIDTH), 0.0f, (float)(z * CHUNK_WIDTH)));
 
-        rChunks[i].InitChunkMesh(rHeightData[i]);
+        rChunks[i].InitChunkMesh(rHeightData[surroundedChunks[i]]);
     }
 }

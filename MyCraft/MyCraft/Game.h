@@ -140,5 +140,5 @@ private:
     void WaitForGpu();
     void MoveToNextFrame();
     void InitMatrix();
-    void InitRegion();
+    void InitRegion(XMFLOAT3* playerPos);
 };

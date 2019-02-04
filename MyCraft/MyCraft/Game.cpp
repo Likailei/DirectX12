@@ -7,7 +7,7 @@ Game::Game(UINT width, UINT height, std::wstring name) :
     m_camera(Camera(m_hwnd, static_cast<float>(width) / static_cast<float>(height))),
     m_title(name),
     //m_speed(8.0f, -6.0f, 6.0f),
-    m_speed(20.0f, -15.0f, 15.0f),
+    m_speed(50.0f, -15.0f, 30.0f),
     m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
     m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
     m_rtvDescSize(0),
@@ -21,7 +21,16 @@ Game::Game(UINT width, UINT height, std::wstring name) :
     constantObject.ambientIntensity = 0.0f;
     constantObject.direction = XMFLOAT3(0.3f, -0.6f, -0.4f);
 
-    InitRegion();
+    srand(time(NULL));
+    XMFLOAT3 playerPos = XMFLOAT3(rand() % 448 + 32, 0.0f, rand() % 448 + 32);
+
+    InitRegion(&playerPos);
+
+    playerPos = m_chunks[12].GetChunkPosition3f();
+    playerPos.y = 255.0f;
+    m_camera.SetPosition(playerPos);
+    m_camera.UpdateViewMatrix();
+
     LoadFiles();
     LoadTextures();
 }
@@ -492,7 +501,7 @@ void Game::InitBundles() {
             m_bundles[i]->SetGraphicsRootDescriptorTable(1, cbvHandle);
             m_bundles[i]->DrawIndexedInstanced(m_chunks[n].GetChunkMesh().i.size(), 1, 0, 0, 0);
             
-            cbvHandle.Offset(1, m_cbuDescSize);
+            //cbvHandle.Offset(1, m_cbuDescSize);
         }        
         
         ThrowIfFailed(m_bundles[i]->Close());
@@ -580,9 +589,9 @@ void Game::InitMatrix()
     XMStoreFloat4x4(&rotMat, XMMatrixIdentity());*/
 }
 
-void Game::InitRegion()
+void Game::InitRegion(XMFLOAT3* playerPos)
 {
-    m_region.InitRegion();
+    m_region.InitRegion(playerPos);
     m_chunks = m_region.GetChunks();
 }
 
@@ -601,9 +610,9 @@ void Game::OnKeyboardInput(double& dt) {
 
     m_camera.UpdateViewMatrix();
 
-    /*wchar_t debugStr[100];
+    wchar_t debugStr[100];
     int cnt = swprintf(debugStr, 100, L"%f %f %f\n", m_camera.GetPosition3f().x, m_camera.GetPosition3f().y, m_camera.GetPosition3f().z);
-    WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), debugStr, cnt, NULL, NULL);*/
+    WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), debugStr, cnt, NULL, NULL);
 }
 
 void Game::OnMouseDown(WPARAM btnState, int x, int y)

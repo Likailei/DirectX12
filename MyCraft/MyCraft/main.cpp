@@ -33,7 +33,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     
     MyGame.OnInit();
 
-    //AllocConsole();
+    AllocConsole();
 
     ShowWindow(MyGame.m_hwnd, nShowCmd);
 

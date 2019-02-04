@@ -52,7 +52,7 @@ private:
     HWND mHwnd;
     bool mViewDirty = true;
 
-    XMFLOAT3 mPosition = { 0.0f, 250.0f, -15.0f };
+    XMFLOAT3 mPosition = { 0.0f, 255.0f, 0.0f };
     XMFLOAT3 mRight = { 1.0f, 0.0f, 0.0f };
     XMFLOAT3 mLook = { 0.0f, 0.0f, 1.0f };
     XMFLOAT3 mFocus = { 0.0f, 1.0f, 0.0f };

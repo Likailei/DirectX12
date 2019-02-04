@@ -7,7 +7,7 @@ class Region {
 public:
     Region(std::string filename);
 
-    void InitRegion();
+    void InitRegion(XMFLOAT3* playerPos);
     const std::vector<Chunk>& GetChunks() const { return rChunks; }
 private:
 
@@ -18,6 +18,6 @@ private:
 
     void LoadHeightMap();
     void TranslateAndInitHeightData();
-    void GenerateChunksMesh();
+    void GenerateChunksMesh(XMFLOAT3* playerPos);
 };
 #endif // !__REGION_H__

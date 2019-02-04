@@ -6,7 +6,7 @@
 
 #define SAFE_RELEASE(p) if (p) (p)->Release()
 
-#define CHUNKCNT 1
+#define CHUNKCNT 25
 
 #include <windows.h>
 #include <windowsx.h>
@@ -24,6 +24,7 @@
 #include <shellapi.h>
 #include <vector>
 #include <fstream>
+#include <time.h>
 
 #include "Timer.h"
 
