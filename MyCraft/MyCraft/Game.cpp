@@ -575,7 +575,7 @@ void Game::PopulateCommandList()
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), NUM_TEXTURE + m_frameIndex * CUBECOUNT, m_cbuDescSize);
 
 	m_commandList->SetGraphicsRootDescriptorTable(0, srvHandle);
-	m_commandList->SetGraphicsRootDescriptorTable(1, cbvHandle);
+	//m_commandList->SetGraphicsRootDescriptorTable(1, cbvHandle);
 
 	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	m_commandList->IASetIndexBuffer(&m_indexBufferView);
