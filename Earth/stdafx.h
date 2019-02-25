@@ -32,8 +32,16 @@ using Microsoft::WRL::ComPtr;
 struct Vertex {
     Vertex() {}
     
-    Vertex(float x, float y, float z, float u, float v, float nx, float ny, float nz) :
-        position(x, y, z), uv(u, v), normal(nx, ny, nz) {}
+    Vertex(const XMFLOAT3& pos_, const XMFLOAT2& uv_) {
+        position = pos_;
+        uv = uv_;
+        XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&position)));
+    }
+
+    Vertex(float x, float y, float z, float u, float v) :
+        position(x, y, z), uv(u, v) {
+            XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&position)));
+    }
 
     XMFLOAT3 position;
     XMFLOAT2 uv;

@@ -558,18 +558,18 @@ void Earth::GenerateMesh()
 
     Mesh m;
     m.v = {
-        Vertex(0.0f,    l,    w, 0.0f, 0.0f, 0.16729f, 0.24329f, 0.27363f),
-        Vertex(0.0f,    l,   -w, 0.0f, 0.0f, 0.31238f, 0.20533f, 0.12245f),
-        Vertex(-l,    w, 0.0f, 0.0f, 0.0f, 0.25502f, 0.09397f, 0.03789f),
-        Vertex(-w, 0.0f,    l, 0.0f, 0.0f, 0.16476f, 0.134f, 0.30175f),
-        Vertex(w, 0.0f,    l, 0.0f, 0.0f, 0.29322f, 0.11193f, 0.22988f),
-        Vertex(l,    w, 0.0f, 0.0f, 0.0f, 0.19746f, 0.06943f, 0.05917f),
-        Vertex(w, 0.0f,   -l, 0.0f, 0.0f, 0.06006f, 0.01757f, 0.16131f),
-        Vertex(-w, 0.0f,   -l, 0.0f, 0.0f, 0.15476f, 0.26534f, 0.31727f),
-        Vertex(-l,   -w, 0.0f, 0.0f, 0.0f, 0.15396f, 0.02117f, 0.12756f),
-        Vertex(0.0f,   -l,    w, 0.0f, 0.0f, 0.1197f, 0.0841f, 0.20186f),
-        Vertex(l,   -w, 0.0f, 0.0f, 0.0f, 0.15155f, 0.18825f, 0.16665f),
-        Vertex(0.0f,   -l,   -w, 0.0f, 0.0f, 0.23714f, 0.01416f, 0.20933f),
+        Vertex(0.0f , l    , w   ,  0.0f, 0.0f ),
+        Vertex(0.0f , l    , -w  ,  0.0f, 0.0f ),
+        Vertex(-l   , w    , 0.0f,  0.0f, 0.0f ),
+        Vertex(-w   , 0.0f , l   ,  0.0f, 0.0f ),
+        Vertex(w    , 0.0f , l   ,  0.0f, 0.0f ),
+        Vertex(l    , w    , 0.0f,  0.0f, 0.0f ),
+        Vertex(w    , 0.0f , -l  ,  0.0f, 0.0f ),
+        Vertex(-w   , 0.0f , -l  ,  0.0f, 0.0f ),
+        Vertex(-l   , -w   , 0.0f,  0.0f, 0.0f ),
+        Vertex(0.0f , -l   , w   ,  0.0f, 0.0f ),
+        Vertex(l    , -w   , 0.0f,  0.0f, 0.0f ),
+        Vertex(0.0f , -l   , -w  ,  0.0f, 0.0f ),
     };
 
     m.i = {
@@ -614,25 +614,25 @@ void Earth::Subdivide(Mesh& outMesh, Mesh& inMesh)
         XMVECTOR Q = (A + C) / 2;
 
         // Porject to circumscribed sphere.
-        O = XMVector3Normalize(O) * m_radius;
-        P = XMVector3Normalize(P) * m_radius;
-        Q = XMVector3Normalize(Q) * m_radius;
+        XMVECTOR nO = XMVector3Normalize(O);
+        XMVECTOR nP = XMVector3Normalize(P);
+        XMVECTOR nQ = XMVector3Normalize(Q);
 
-        Vertex vo, vp, vq;
-        XMStoreFloat3(&vo.position, O);
-        XMStoreFloat3(&vp.position, P);
-        XMStoreFloat3(&vq.position, Q);
+        O = nO * m_radius;
+        P = nP * m_radius;
+        Q = nQ * m_radius;
 
-        vo.uv = XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f);
-        vp.uv = XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f);
-        vq.uv = XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f);
-        vo.normal = XMFLOAT3((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f);
-        vp.normal = XMFLOAT3((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f);
-        vq.normal = XMFLOAT3((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f);
+        XMFLOAT3 fO, fP, fQ;
+        XMStoreFloat3(&fO, O);
+        XMStoreFloat3(&fP, P);
+        XMStoreFloat3(&fQ, Q);
 
+        Vertex vo{ fO, XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f) };
+        Vertex vp{ fP, XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f) };
+        Vertex vq{ fQ, XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f) };
+                                 
         outMesh.v.push_back(va); outMesh.v.push_back(vb); outMesh.v.push_back(vc);
         outMesh.v.push_back(vq); outMesh.v.push_back(vo); outMesh.v.push_back(vp);
-
 
         outMesh.i.push_back(0 + offset); outMesh.i.push_back(4 + offset); outMesh.i.push_back(3 + offset);
         outMesh.i.push_back(4 + offset); outMesh.i.push_back(1 + offset); outMesh.i.push_back(5 + offset);
