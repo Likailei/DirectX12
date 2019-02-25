@@ -14,8 +14,8 @@
 #include <D3Dcompiler.h>
 #include <DirectXMath.h>
 
-#include "d3dx12.h"
-#include "lodepng.h"
+#include "../Library/d3dx12.h"
+#include "../Library/lodepng.h"
 
 #include <string>
 #include <wrl.h>
