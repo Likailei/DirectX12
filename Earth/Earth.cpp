@@ -18,6 +18,17 @@ Earth::Earth(UINT width, UINT height, std::wstring name) :
     m_timer.Tick();
     srand(time(NULL));
 
+    cubemapFaceCenters[FRONT] = XMFLOAT3(0.0f, 0.0f, -m_radius);
+    cubemapFaceCenters[BACK] = XMFLOAT3(0.0f, 0.0f, m_radius);
+    cubemapFaceCenters[LEFT] = XMFLOAT3(-m_radius, 0.0f, 0.0f);
+    cubemapFaceCenters[RIGHT] = XMFLOAT3(m_radius, 0.0f, 0.0f);
+    cubemapFaceCenters[TOP] = XMFLOAT3(0.0f, m_radius, 0.0f);
+    cubemapFaceCenters[BOTTOM] = XMFLOAT3(0.0f, -m_radius, 0.0f);
+
+    for (int i = 0; i < 6; ++i) {
+        XMStoreFloat3(&cubemapFaceNormals[i], XMVector3Normalize(XMLoadFloat3(&cubemapFaceCenters[i])));
+    }
+
     constantObject.ambientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     constantObject.ambientIntensity = 0.0f;
     constantObject.direction = XMFLOAT3(0.3f, -0.6f, -0.4f);
@@ -99,7 +110,7 @@ void Earth::LoadPipeline() {
 
         // SRV CBV heaps.
         D3D12_DESCRIPTOR_HEAP_DESC cbvSrvHeapDesc = {};
-        cbvSrvHeapDesc.NumDescriptors = 1 + FrameCount;
+        cbvSrvHeapDesc.NumDescriptors = TextureCnt + FrameCount;
         cbvSrvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         cbvSrvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvSrvHeapDesc, IID_PPV_ARGS(&m_cbvSrvHeap)));
@@ -154,12 +165,13 @@ void Earth::LoadAssets() {
         }
 
         CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
-        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, TextureCnt, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
         ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
         CD3DX12_ROOT_PARAMETER1 rootParameters[2];
         rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
         rootParameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_VERTEX);
+        
 
         // create static sampler
         D3D12_STATIC_SAMPLER_DESC sampler = {};
@@ -201,13 +213,13 @@ void Earth::LoadAssets() {
         UINT compileFlags = 0;
 #endif
         HRESULT h;
-        h = D3DCompileFromFile(L"VS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, 0, &vertexShader, &errorMessages);
+        h = D3DCompileFromFile(L"VS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_1", compileFlags, 0, &vertexShader, &errorMessages);
         if (errorMessages != nullptr)
         {
             OutputDebugStringA((char*)errorMessages->GetBufferPointer());
         }
 
-        h = D3DCompileFromFile(L"PS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, 0, &pixelShader, &errorMessages);
+        h = D3DCompileFromFile(L"PS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_1", compileFlags | D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES, 0, &pixelShader, &errorMessages);
         if (errorMessages != nullptr)
         {
             OutputDebugStringA((char*)errorMessages->GetBufferPointer());
@@ -217,7 +229,8 @@ void Earth::LoadAssets() {
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
             { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            { "FACE", 0, DXGI_FORMAT_R8_UINT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
 
         // PSO.
@@ -330,50 +343,54 @@ void Earth::LoadAssets() {
         textureDesc.Width = m_textures[0].width;
         textureDesc.Height = m_textures[0].height;
 
-        ThrowIfFailed(m_device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &textureDesc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&m_textureBuffer)));
+        for (int i = 0; i < TextureCnt; ++i) {
+            ThrowIfFailed(m_device->CreateCommittedResource(
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+                D3D12_HEAP_FLAG_NONE,
+                &textureDesc,
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                nullptr,
+                IID_PPV_ARGS(&m_textureBuffers[i])));
+            
+            UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_textureBuffers[i].Get(), 0, 1);
 
-        UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_textureBuffer.Get(), 0, 1);
+            // Copy data to the intermediate upload heap and then schedule a copy 
+            // from the upload heap to the Texture2D.
+            // Create the GPU upload buffer.
+            ThrowIfFailed(m_device->CreateCommittedResource(
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(&textureBufferUploadHeaps[i])));
 
-        // Copy data to the intermediate upload heap and then schedule a copy 
-        // from the upload heap to the Texture2D.
-        // Create the GPU upload buffer.
-        ThrowIfFailed(m_device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&textureBufferUploadHeap)));
+            D3D12_SUBRESOURCE_DATA textureData = {};
+            textureData.pData = m_textures[i].data.data();
+            textureData.RowPitch = m_textures[i].width * 4;
+            textureData.SlicePitch = textureData.RowPitch * m_textures[i].height;
 
-        D3D12_SUBRESOURCE_DATA textureData = {};
-        textureData.pData = m_textures[0].data.data();
-        textureData.RowPitch = m_textures[0].width * 4;
-        textureData.SlicePitch = textureData.RowPitch * m_textures[0].height;
-
-        UpdateSubresources(m_commandList.Get(), m_textureBuffer.Get(), textureBufferUploadHeap.Get(), 0, 0, 1, &textureData);
-        m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textureBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-
-
+            UpdateSubresources(m_commandList.Get(), m_textureBuffers[i].Get(), textureBufferUploadHeaps[i].Get(), 0, 0, 1, &textureData);
+            m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textureBuffers[i].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+        }
+        
         // Describe and create a SRV for the texture.
         CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(m_cbvSrvHeap->GetCPUDescriptorHandleForHeapStart());
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
+        for (int i = 0; i < TextureCnt; ++i) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = 1;
+            m_device->CreateShaderResourceView(m_textureBuffers[i].Get(), &srvDesc, srvHandle);
 
-        m_device->CreateShaderResourceView(m_textureBuffer.Get(), &srvDesc, srvHandle);
+            srvHandle.Offset(m_cbuDescSize);
+        }
     }
 
     // Constant buffer view.
     {
-        CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetCPUDescriptorHandleForHeapStart(), 1, m_cbuDescSize);    // Move past the SRVs.
+        CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetCPUDescriptorHandleForHeapStart(), TextureCnt, m_cbuDescSize);    // Move past the SRVs.
 
         UINT64 bufferSize = 1024 * 64;
         for (UINT8 i = 0; i < FrameCount; i++) {
@@ -447,7 +464,7 @@ void Earth::InitBundles() {
     // Record bundle.
     ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvHeap.Get() };
     CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart());
-    CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), 1 + m_frameIndex, m_cbuDescSize);
+    CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(m_cbvSrvHeap->GetGPUDescriptorHandleForHeapStart(), TextureCnt + m_frameIndex, m_cbuDescSize);
 
     for (UINT8 i = 0; i < FrameCount; i++) {
         m_bundles[i]->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -558,18 +575,18 @@ void Earth::GenerateMesh()
 
     Mesh m;
     m.v = {
-        Vertex(0.0f , l    , w   ,  0.0f, 0.0f ),
-        Vertex(0.0f , l    , -w  ,  0.0f, 0.0f ),
-        Vertex(-l   , w    , 0.0f,  0.0f, 0.0f ),
-        Vertex(-w   , 0.0f , l   ,  0.0f, 0.0f ),
-        Vertex(w    , 0.0f , l   ,  0.0f, 0.0f ),
-        Vertex(l    , w    , 0.0f,  0.0f, 0.0f ),
-        Vertex(w    , 0.0f , -l  ,  0.0f, 0.0f ),
-        Vertex(-w   , 0.0f , -l  ,  0.0f, 0.0f ),
-        Vertex(-l   , -w   , 0.0f,  0.0f, 0.0f ),
-        Vertex(0.0f , -l   , w   ,  0.0f, 0.0f ),
-        Vertex(l    , -w   , 0.0f,  0.0f, 0.0f ),
-        Vertex(0.0f , -l   , -w  ,  0.0f, 0.0f ),
+        Vertex(0.0f , l    , w   ,  0.0f, 0.0f, TOP ),
+        Vertex(0.0f , l    , -w  ,  0.0f, 0.0f, TOP ),
+        Vertex(-l   , w    , 0.0f,  0.0f, 0.0f, BACK ),
+        Vertex(-w   , 0.0f , l   ,  0.0f, 0.0f, RIGHT ),
+        Vertex(w    , 0.0f , l   ,  0.0f, 0.0f, RIGHT ),
+        Vertex(l    , w    , 0.0f,  0.0f, 0.0f, FRONT ),
+        Vertex(w    , 0.0f , -l  ,  0.0f, 0.0f, LEFT ),
+        Vertex(-w   , 0.0f , -l  ,  0.0f, 0.0f, LEFT ),
+        Vertex(-l   , -w   , 0.0f,  0.0f, 0.0f, BACK ),
+        Vertex(0.0f , -l   , w   ,  0.0f, 0.0f, BOTTOM ),
+        Vertex(l    , -w   , 0.0f,  0.0f, 0.0f, FRONT ),
+        Vertex(0.0f , -l   , -w  ,  0.0f, 0.0f, BOTTOM ),
     };
 
     m.i = {
@@ -622,15 +639,14 @@ void Earth::Subdivide(Mesh& outMesh, Mesh& inMesh)
         P = nP * m_radius;
         Q = nQ * m_radius;
 
-        XMFLOAT3 fO, fP, fQ;
-        XMStoreFloat3(&fO, O);
-        XMStoreFloat3(&fP, P);
-        XMStoreFloat3(&fQ, Q);
+        Vertex vo{ O, nO };
+        Vertex vp{ P, nP };
+        Vertex vq{ Q, nQ };
 
-        Vertex vo{ fO, XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f) };
-        Vertex vp{ fP, XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f) };
-        Vertex vq{ fQ, XMFLOAT2((rand() % 1000000) * 0.00001f, (rand() % 1000000) * 0.00001f) };
-                                 
+        vo.face = CalculateUV(vo.uv, O);
+        vp.face = CalculateUV(vp.uv, P);
+        vq.face = CalculateUV(vq.uv, Q);
+
         outMesh.v.push_back(va); outMesh.v.push_back(vb); outMesh.v.push_back(vc);
         outMesh.v.push_back(vq); outMesh.v.push_back(vo); outMesh.v.push_back(vp);
 
@@ -645,11 +661,92 @@ void Earth::Subdivide(Mesh& outMesh, Mesh& inMesh)
 
 void Earth::LoadTextures()
 {
-    std::string textureFileName[] = { "./assets/neg_x.png", "./assets/neg_y.png", "./assets/neg_z.png", "./assets/pos_x.png", "./assets/pos_y.png", "./assets/pos_z.png" };
-    /*for (int i = 0; i < 1; ++i) {
+    std::string textureFileName[] = { "./assets/neg_z.png", "./assets/pos_z.png", "./assets/neg_x.png", "./assets/pos_x.png", "./assets/pos_y.png", "./assets/neg_y.png" };
+    for (int i = 0; i < TextureCnt; ++i) {
         lodepng::decode(m_textures[i].data, m_textures[i].width, m_textures[i].height, textureFileName[i]);
-    }*/
-    lodepng::decode(m_textures[0].data, m_textures[0].width, m_textures[0].height, "./assets/pos_y.png");
+    }
+    //lodepng::decode(m_textures[0].data, m_textures[0].width, m_textures[0].height, "./assets/bedrock.png");
+}
+
+Face Earth::CalculateUV(XMFLOAT2& uv, XMVECTOR& l)
+{
+    XMFLOAT3 fL, aL;
+    XMStoreFloat3(&aL, XMVectorAbs(l));
+    XMStoreFloat3(&fL, l);
+    Face f;
+
+    if (aL.x > aL.y && aL.x > aL.z) {
+        f = aL.x > 0.0f ? RIGHT : LEFT;
+    }
+    else if (aL.y > aL.x && aL.y > aL.z) {
+        f = aL.y > 0.0f ? TOP : BOTTOM;
+    }
+    else if (aL.z > aL.x && aL.z > aL.y) {
+        f = aL.z > 0.0f ? BACK : FRONT;
+    }
+    //else if (aL.x == aL.y && aL.x == aL.z) {
+    //    f = aL.x > 0.0f ? RIGHT : LEFT;
+    //}
+
+    XMVECTOR c = XMLoadFloat3(&cubemapFaceCenters[f]);
+    XMVECTOR n = XMLoadFloat3(&cubemapFaceNormals[f]);
+    XMVECTOR j = XMVector3Dot(c - l, n);
+    XMVECTOR nl = XMVector3Normalize(l);
+    XMVECTOR k = XMVector3Dot(nl, n);
+
+    XMVECTOR p = (XMVectorGetX(j) / XMVectorGetX(k)) * nl + l;
+    p = XMVector3Normalize(p);
+
+    float w = 1.0f;
+    switch (f)
+    {
+    case FRONT:
+    {
+        float u = (w / 2.0f + XMVectorGetX(p)) / w;
+        float v = (w / 2.0f - XMVectorGetY(p)) / w;
+        uv =  XMFLOAT2(u, v);
+        break;
+    }
+    case BACK:
+    {
+        float u = (w / 2.0f - XMVectorGetX(p)) / w;
+        float v = (w / 2.0f - XMVectorGetY(p)) / w;
+        uv = XMFLOAT2(u, v);
+        break;
+    }
+    case LEFT:
+    {
+        float u = (w / 2.0f - XMVectorGetZ(p)) / w;
+        float v = (w / 2.0f - XMVectorGetY(p)) / w;
+        uv = XMFLOAT2(u, v);
+        break;
+    }
+    case RIGHT:
+    {
+        float u = (w / 2.0f + XMVectorGetZ(p)) / w;
+        float v = (w / 2.0f - XMVectorGetY(p)) / w;
+        uv = XMFLOAT2(u, v);
+        break;
+    }
+    case TOP:
+    {
+        float u = (w / 2.0f + XMVectorGetX(p)) / w;
+        float v = (w / 2.0f - XMVectorGetZ(p)) / w;
+        uv = XMFLOAT2(u, v);
+        break;
+    }
+    case BOTTOM:
+    {
+        float u = (w / 2.0f + XMVectorGetX(p)) / w;
+        float v = (w / 2.0f + XMVectorGetZ(p)) / w;
+        uv = XMFLOAT2(u, v);
+        break;
+    }
+    default:
+        break;
+    }
+
+    return f;
 }
 
 void Earth::OnKeyboardInput(double& dt) {

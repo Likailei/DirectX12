@@ -29,23 +29,31 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
+enum Face { FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM };
+
 struct Vertex {
     Vertex() {}
     
+    Vertex(const XMVECTOR& pos_, const XMVECTOR& normal_) {
+        XMStoreFloat3(&position, pos_);
+        XMStoreFloat3(&normal, normal_);
+    }
+
     Vertex(const XMFLOAT3& pos_, const XMFLOAT2& uv_) {
         position = pos_;
         uv = uv_;
         XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&position)));
     }
 
-    Vertex(float x, float y, float z, float u, float v) :
-        position(x, y, z), uv(u, v) {
+    Vertex(float x, float y, float z, float u, float v, int f) :
+        position(x, y, z), uv(u, v), face(f) {
             XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&position)));
     }
 
     XMFLOAT3 position;
     XMFLOAT2 uv;
     XMFLOAT3 normal;
+    UINT face;
 };
 
 struct Mesh {

@@ -69,10 +69,15 @@ private:
     float m_radius;
 
     // Files
-    Texture m_textures[1];
+    static const UINT TextureCnt = 6;
+    Texture m_textures[TextureCnt];
     Mesh m_mesh;
 
     cbObject constantObject;
+
+    // Cubemap
+    XMFLOAT3 cubemapFaceCenters[6];
+    XMFLOAT3 cubemapFaceNormals[6];
 
     bool m_useWarpDevice = false;
     CD3DX12_VIEWPORT m_viewport;
@@ -95,7 +100,7 @@ private:
 
     ComPtr<ID3D12Resource> m_vertexBuffer;
     ComPtr<ID3D12Resource> m_indexBuffer;
-    ComPtr<ID3D12Resource> m_textureBuffer;
+    ComPtr<ID3D12Resource> m_textureBuffers[TextureCnt];
     ComPtr<ID3D12Resource> m_cbvBuffers[FrameCount];
     ComPtr<ID3D12Resource> m_depthStencilBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
@@ -104,7 +109,7 @@ private:
 
     ComPtr<ID3D12Resource> vertexBufferUploadHeap;
     ComPtr<ID3D12Resource> indexBufferUploadHeap;
-    ComPtr<ID3D12Resource> textureBufferUploadHeap;
+    ComPtr<ID3D12Resource> textureBufferUploadHeaps[TextureCnt];
 
     UINT m_frameIndex;
     UINT m_rtvDescSize;
@@ -126,4 +131,5 @@ private:
     void GenerateMesh();
     void Subdivide(Mesh& outMesh, Mesh& inMesh);
     void LoadTextures();
+    Face CalculateUV(XMFLOAT2& uv, XMVECTOR& l);
 };
