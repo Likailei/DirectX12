@@ -30,6 +30,7 @@ using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 enum Face { FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM };
+const float PI = 3.141592f;
 
 struct Vertex {
     Vertex() {}

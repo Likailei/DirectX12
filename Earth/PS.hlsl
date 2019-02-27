@@ -32,5 +32,5 @@ float4 main(VS_OUTPUT input) : SV_TARGET
     //	litColor += t * float4(0.3f, 0.3f, 0.3f, 0.3f);
     //}
 
-    return tArr[input.face].Sample(s1, input.uv);
+    return tArr[0].Sample(s1, input.uv);
 }

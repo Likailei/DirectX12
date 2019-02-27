@@ -69,7 +69,7 @@ private:
     float m_radius;
 
     // Files
-    static const UINT TextureCnt = 6;
+    static const UINT TextureCnt = 1;
     Texture m_textures[TextureCnt];
     Mesh m_mesh;
 
@@ -131,5 +131,6 @@ private:
     void GenerateMesh();
     void Subdivide(Mesh& outMesh, Mesh& inMesh);
     void LoadTextures();
-    Face CalculateUV(XMFLOAT2& uv, XMVECTOR& l);
+    Face CalculateUVCubemap(XMFLOAT2& uv, XMVECTOR& l);
+    void CalculateUVProj(XMFLOAT2& uv, XMVECTOR& l);
 };

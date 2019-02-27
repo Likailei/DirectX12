@@ -643,9 +643,13 @@ void Earth::Subdivide(Mesh& outMesh, Mesh& inMesh)
         Vertex vp{ P, nP };
         Vertex vq{ Q, nQ };
 
-        vo.face = CalculateUV(vo.uv, O);
+        /*vo.face = CalculateUV(vo.uv, O);
         vp.face = CalculateUV(vp.uv, P);
-        vq.face = CalculateUV(vq.uv, Q);
+        vq.face = CalculateUV(vq.uv, Q);*/
+
+        CalculateUVProj(vo.uv, O);
+        CalculateUVProj(vp.uv, P);
+        CalculateUVProj(vq.uv, Q);
 
         outMesh.v.push_back(va); outMesh.v.push_back(vb); outMesh.v.push_back(vc);
         outMesh.v.push_back(vq); outMesh.v.push_back(vo); outMesh.v.push_back(vp);
@@ -662,13 +666,13 @@ void Earth::Subdivide(Mesh& outMesh, Mesh& inMesh)
 void Earth::LoadTextures()
 {
     std::string textureFileName[] = { "./assets/neg_z.png", "./assets/pos_z.png", "./assets/neg_x.png", "./assets/pos_x.png", "./assets/pos_y.png", "./assets/neg_y.png" };
-    for (int i = 0; i < TextureCnt; ++i) {
+   /* for (int i = 0; i < TextureCnt; ++i) {
         lodepng::decode(m_textures[i].data, m_textures[i].width, m_textures[i].height, textureFileName[i]);
-    }
-    //lodepng::decode(m_textures[0].data, m_textures[0].width, m_textures[0].height, "./assets/bedrock.png");
+    }*/
+    lodepng::decode(m_textures[0].data, m_textures[0].width, m_textures[0].height, "./assets/1.png");
 }
 
-Face Earth::CalculateUV(XMFLOAT2& uv, XMVECTOR& l)
+Face Earth::CalculateUVCubemap(XMFLOAT2& uv, XMVECTOR& l)
 {
     XMFLOAT3 fL, aL;
     XMStoreFloat3(&aL, XMVectorAbs(l));
@@ -747,6 +751,25 @@ Face Earth::CalculateUV(XMFLOAT2& uv, XMVECTOR& l)
     }
 
     return f;
+}
+
+void Earth::CalculateUVProj(XMFLOAT2 & uv, XMVECTOR & l)
+{
+    l = XMVector3Normalize(l);
+
+    // 点所在的水平圆周半径
+    float theta = XMVectorGetX(XMVector3AngleBetweenVectors(l, XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f)));
+    float r = sin(theta) * m_radius;
+    float length = 2.0f * r * PI;
+
+    // 点所在过圆心的垂直面与-z轴夹角
+    XMVECTOR projX_l = XMVectorSet(XMVectorGetX(l), 0.0f, XMVectorGetZ(l), XMVectorGetW(l));
+    float phi = XMVectorGetX(XMVector3AngleBetweenVectors(projX_l, XMVectorSet(0.0f, 0.0f, -1.0f, 1.0f)));
+    // 判断在+x/-x轴部分
+    phi = XMVectorGetX(l) < 0.0f ? 2 * PI - phi : phi;
+
+    uv.y = 1.0f / 2.0f - XMVectorGetY(l);
+    uv.x = phi / (2.0f * PI);
 }
 
 void Earth::OnKeyboardInput(double& dt) {
